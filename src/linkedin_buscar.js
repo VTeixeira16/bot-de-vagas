@@ -5,7 +5,7 @@
 // Para mudar as buscas: faça a busca no LinkedIn (palavras-chave, local, filtros), copie o
 // endereço da barra do navegador e cole em linkedin_buscas, no config.json.
 // Sem local no link, busca no Brasil. Sem filtro de data, pega as das últimas 24 h.
-// Na coleta retroativa (a primeira), troca a data por 90 dias e lê mais páginas.
+// Na coleta retroativa, troca a data por DIAS_RETROATIVO dias e lê mais páginas.
 const BUSCAS = CONFIG.linkedin_buscas;
 const PAGINAS = 4;          // páginas por busca (cada uma traz até 10 vagas)
 const PAGINAS_RETRO = 25;   // na coleta retroativa (até 250 vagas por busca)

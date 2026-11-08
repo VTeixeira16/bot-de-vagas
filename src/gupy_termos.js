@@ -3,7 +3,7 @@
 // pausa entre elas).
 const TERMOS = [...new Set([...CONFIG.termos_de_busca.cargos, ...CONFIG.termos_de_busca.assuntos])];
 
-// Cada página traz até 100 vagas; na coleta retroativa (a primeira) lê 3 páginas por termo.
+// Cada página traz até 100 vagas; na coleta retroativa lê 3 páginas por termo.
 const PAGINAS_RETRO = 3;
 
 function main(retroativo = false) {

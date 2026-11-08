@@ -2,8 +2,8 @@
 // depois da constante CONFIG (o config.json já conferido e com os padrões; ver configuracao.py).
 const MODELO = CONFIG.modelo_gemini;
 const DIAS_RECENTES = 3; // ignora vagas publicadas há mais tempo (Gupy/Remotive)
-// Primeira coleta (ou depois de apagar o registro em `coletas`): busca os últimos 90 dias.
-const DIAS_RETROATIVO = 90;
+// Coleta retroativa (/sim à pergunta do banco vazio, ou /buscar 30): últimos 30 dias.
+const DIAS_RETROATIVO = 30;
 
 const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" };
 

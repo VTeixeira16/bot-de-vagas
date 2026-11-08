@@ -32,9 +32,9 @@ CREATE OR REPLACE FUNCTION link_chave(l text) RETURNS text LANGUAGE sql IMMUTABL
 $f$;
 CREATE INDEX IF NOT EXISTS vagas_link_chave_idx ON vagas (link_chave(link));
 
--- Uma linha por coleta. A primeira (sem nenhuma retroativa registrada) busca os últimos
--- 90 dias; as demais, só as recentes. O nó "Janela da coleta" também cria esta tabela
--- se ela faltar. Para refazer o retroativo: DELETE FROM coletas WHERE retroativo;
+-- Uma linha por coleta; retroativo = buscou os últimos 30 dias (só quando pedido: /sim à
+-- pergunta do banco vazio ou /buscar 30). O nó "Janela da coleta" também cria esta tabela
+-- se ela faltar.
 CREATE TABLE IF NOT EXISTS coletas (
   id          bigserial   PRIMARY KEY,
   iniciada_em timestamptz NOT NULL DEFAULT now(),

@@ -36,7 +36,7 @@ PAUSA_N8N = 10
 # Menu que aparece no Telegram ao digitar "/"
 COMANDOS = [
     ("vagas", "Resumo agora das vagas já analisadas e ainda não enviadas"),
-    ("buscar", "Coleta, analisa e resume (/buscar 90 = 90 dias; /buscar gupy = só a Gupy)"),
+    ("buscar", "Coleta, analisa e resume (/buscar 30 = 30 dias; /buscar gupy = só a Gupy)"),
     ("recentes", "Repete as melhores dos últimos dias (ex.: /recentes 3)"),
     ("status", "Situação do bot e do banco"),
     ("perfil", "Resumo do perfil usado nas notas (/perfil completo = texto inteiro)"),

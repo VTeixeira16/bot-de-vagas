@@ -7,6 +7,7 @@ O servidor/configurar_n8n.sh roda isto antes de importar; o workflow.json não v
 """
 import argparse
 import json
+import re
 import sys
 import urllib.parse
 import uuid
@@ -33,6 +34,8 @@ for _a in AVISOS:
 UTIL = (f"const CONFIG = {json.dumps(configuracao.para_js(CFG), ensure_ascii=False)};\n"
         + (SRC / "util.js").read_text(encoding="utf-8"))
 HORA = CFG["horarios"]
+# Janela da coleta retroativa (src/util.js), para os textos montados aqui
+DIAS_RETRO = int(re.search(r"const DIAS_RETROATIVO = (\d+);", UTIL).group(1))
 ATIVAS = [f for f in configuracao.FONTES if CFG["fontes"][f]]
 
 
@@ -236,16 +239,16 @@ FILTRO_FONTES = "($1::text = 'todas' OR {col} = ANY(string_to_array($1::text, ' 
 NOME_COLETA = f"Coletar ({configuracao.lista_humana(HORA['coleta'], 'e')})"
 t1 = agenda(NOME_COLETA, (0, 300), HORA["coleta"])
 
-# Diz se esta coleta é a retroativa (últimos 90 dias): só a primeira, ou a próxima depois
-# de apagar o registro (DELETE FROM coletas WHERE retroativo;), ou quando o /buscar 90 pede
-# (chega com retroativo = true). Cria a tabela se faltar.
+# Diz se esta coleta é a retroativa (últimos DIAS_RETROATIVO dias): só quando pedida pelo
+# /sim (resposta à pergunta do banco vazio) ou pelo /buscar 30 (chega com retroativo =
+# true); nunca sozinha. Cria a tabela se faltar.
 j1 = sql("Janela da coleta", (200, 300), """CREATE TABLE IF NOT EXISTS coletas (
   id          bigserial   PRIMARY KEY,
   iniciada_em timestamptz NOT NULL DEFAULT now(),
   retroativo  boolean     NOT NULL
 );
 """ + LINK_CHAVE + """INSERT INTO coletas (retroativo)
-SELECT $1::boolean OR NOT EXISTS (SELECT 1 FROM coletas WHERE retroativo)
+SELECT $1::boolean
 RETURNING retroativo, $2::text AS fontes;""", "={{ [ $json.retroativo === true, $json.fontes || 'todas' ] }}")
 liga(t1, j1)
 
@@ -430,7 +433,7 @@ c13 = code("Buscar: avisar", (780, 2000),
            "const cmd = $('Comando: interpretar').first().json;\n"
            "const r = cmd.retroativo === true;\n"
            "return [{ json: { texto: '🔎 Buscando vagas agora (' + (cmd.nomesFontes || 'todas as fontes') + ')' + "
-           "(r ? ', dos últimos 90 dias' : '') + '. Depois vem a análise, uns 6 s por vaga; ' + "
+           "(r ? ', dos últimos " + str(DIAS_RETRO) + " dias' : '') + '. Depois vem a análise, uns 6 s por vaga; ' + "
            "'o resumo chega no fim' + ((cmd.fontes || []).length ? ', só com estas fontes (as outras ficam para as "
            + HORA["resumo"] + ").' : '.') } }];")
 tg3 = telegram("Telegram: avisar busca", (1040, 2000))

@@ -9,6 +9,10 @@ const MOTIVO = {
   status: 'você pediu /status',
 };
 
+const PERGUNTA_RETROATIVO = `🆕 <b>Banco vazio.</b> Quer que eu busque também as vagas publicadas nos últimos ${DIAS_RETROATIVO} dias? ` +
+  `Responda /sim (busco agora, analiso e mando o resumo; a análise leva mais tempo) ou /nao ` +
+  `(sigo só com as vagas novas, a partir da coleta das ${CONFIG.horarios.coleta[0]}).`;
+
 function fmtData(iso) {
   if (!iso) return 'nunca';
   return new Date(iso).toLocaleString('pt-BR', {
@@ -32,6 +36,9 @@ function main(evento, situacao) {
       `🗂️ ${n(s.total)} vagas no banco · ${n(s.pendentes)} aguardando análise · ${n(s.a_notificar)} para o próximo resumo`,
       `Última coleta: ${fmtData(s.ultima_coleta)} · última análise: ${fmtData(s.ultima_analise)}`,
     );
+    // Banco vazio (instalação nova): pergunta se busca também as vagas antigas. Não busca
+    // sozinho: a retroativa leva dias de cota do Gemini no plano gratuito.
+    if (n(s.total) === 0 && !s.ultima_coleta) linhas.push('', PERGUNTA_RETROATIVO);
   } else {
     linhas.push('⚠️ Não consegui ler o banco: confira a credencial do Postgres.');
   }

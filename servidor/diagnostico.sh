@@ -108,7 +108,7 @@ for i, link in enumerate(CFG["linkedin_buscas"], 1):
     q = [(k, v) for k, v in urllib.parse.parse_qsl(urllib.parse.urlsplit(link).query) if k not in IGNORAR]
     p = dict(q)
     p.setdefault("geoId", "106057199")  # Brasil (location=Brasil devolve vagas dos EUA)
-    for janela, rotulo in (("r86400", "24 h"), ("r7776000", "90 dias")):
+    for janela, rotulo in (("r86400", "24 h"), ("r2592000", "30 dias")):
         p2 = {**p, "f_TPR": janela, "start": "0"}
         url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?" + urllib.parse.urlencode(p2)
         st, html = get(url)
@@ -127,7 +127,7 @@ for base in apis:
         api = base
         break
     time.sleep(1.5)
-tot3 = tot90 = 0
+tot3 = tot30 = 0
 for termo in termos:
     st, corpo = get(api + "?" + urllib.parse.urlencode({"jobName": termo, "limit": 100, "offset": 0}))
     try:
@@ -136,11 +136,11 @@ for termo in termos:
         dados = []
     idades = [dias(v.get("publishedDate") or v.get("publishedAt")) for v in dados]
     a3 = sum(1 for d in idades if d is None or d <= 3)
-    a90 = sum(1 for d in idades if d is None or d <= 90)
-    tot3 += a3; tot90 += a90
-    print(f"Gupy '{termo}': HTTP {st}, {len(dados)} vagas, {a3} de até 3 dias, {a90} de até 90 dias")
+    a30 = sum(1 for d in idades if d is None or d <= 30)
+    tot3 += a3; tot30 += a30
+    print(f"Gupy '{termo}': HTTP {st}, {len(dados)} vagas, {a3} de até 3 dias, {a30} de até 30 dias")
     time.sleep(1.5)
-print(f"Gupy total (com repetidas): {tot3} de até 3 dias, {tot90} de até 90 dias")
+print(f"Gupy total (com repetidas): {tot3} de até 3 dias, {tot30} de até 30 dias")
 
 # Remotive
 st, corpo = get("https://remotive.com/api/remote-jobs?limit=200&category="

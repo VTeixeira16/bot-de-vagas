@@ -10,6 +10,8 @@ const ACOES = {
   curriculo: 'curriculo', cv: 'curriculo',
   usar: 'usar',
   perfil: 'perfil',
+  // Respostas à pergunta da busca retroativa (aviso de início com o banco vazio)
+  sim: 'buscar', nao: 'nao',
 };
 const COMO_MANDAR_CURRICULO = '📄 Para trocar o perfil usado nas notas, mande o <b>PDF do seu currículo</b> aqui no chat ' +
   '(clipe → Arquivo; até 5 MB). O Gemini monta um perfil novo, mantendo as suas preferências atuais ' +
@@ -26,9 +28,9 @@ const AJUDA = [
   '🤖 <b>Comandos do bot de vagas</b>',
   '/vagas — manda agora o resumo das vagas já analisadas e ainda não enviadas',
   '/buscar — coleta agora em todas as fontes, analisa e manda o resumo',
-  '/buscar 90 — o mesmo, mas buscando as vagas dos últimos 90 dias (demora mais)',
+  `/buscar ${DIAS_RETROATIVO} — o mesmo, mas buscando as vagas dos últimos ${DIAS_RETROATIVO} dias (demora mais)`,
   `/buscar ${ATIVAS[0]} — só algumas fontes (${ATIVAS.join(', ')}` +
-    `${NOVAS.length ? '; carreiras = sites brasileiros e páginas de carreira' : ''}); junta com 90: /buscar 90 ${ATIVAS.slice(-2).join(' ')}`,
+    `${NOVAS.length ? '; carreiras = sites brasileiros e páginas de carreira' : ''}); junta com ${DIAS_RETROATIVO}: /buscar ${DIAS_RETROATIVO} ${ATIVAS.slice(-2).join(' ')}`,
   `/recentes — repete as melhores dos últimos ${DIAS_PADRAO} dias, mesmo as já enviadas (/recentes 3 = 3 dias)`,
   '/status — situação do bot e do banco',
   '📄 PDF do currículo — mande aqui (como arquivo) para montar um perfil novo; /usar confirma',
@@ -36,7 +38,7 @@ const AJUDA = [
   '/ajuda — esta lista',
 ].join('\n');
 
-// Fontes que o /buscar aceita (/buscar gupy, /buscar 90 gupy linkedin)
+// Fontes que o /buscar aceita (/buscar gupy, /buscar 30 gupy linkedin)
 // Chaves já normalizadas (normalizarChave: "Vagas.com" vira "vagas com")
 const FONTES = {
   linkedin: 'linkedin', gupy: 'gupy', remotive: 'remotive', infojobs: 'infojobs', catho: 'catho',
@@ -77,13 +79,19 @@ function main(entrada) {
     return [{ json: { acao, comando, dias, pedido, texto: '' } }];
   }
 
+  if (acao === 'nao') {
+    return [{ json: { acao: 'ajuda', comando, dias, texto: `👍 Combinado: sigo só com as vagas novas, a partir da coleta das ` +
+      `${CONFIG.horarios.coleta[0]}. Se mudar de ideia, /buscar ${DIAS_RETROATIVO} busca as dos últimos ${DIAS_RETROATIVO} dias.` } }];
+  }
+
   if (!acao) {
     return [{ json: { acao: 'ajuda', comando, dias,
       texto: `Não entendi "${esc(cortar(texto, 40))}".\n\n${AJUDA}` } }];
   }
 
-  // /buscar [90|tudo] [gupy|linkedin|remotive ...]: em qualquer ordem
-  let retroativo = false;
+  // /buscar [30|tudo] [gupy|linkedin|remotive ...]: em qualquer ordem. /sim (resposta à
+  // pergunta do banco vazio) é o /buscar retroativo
+  let retroativo = comando === 'sim';
   const fontes = [];
   if (acao === 'buscar') {
     for (const arg of resto) {

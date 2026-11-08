@@ -24,7 +24,7 @@ Os horários abaixo são os padrões; todos podem ser mudados na configuração.
                                               escolher (Greenhouse, Lever, Workable)
                               ↓
                          banco (vaga repetida não entra nem é analisada de novo);
-                         a 1ª coleta busca os últimos 90 dias
+                         com o banco vazio, o bot pergunta se busca os últimos 30 dias
                               ↓
 07:30          Analisar ── lê a descrição completa de cada vaga nova
                            → Gemini dá a nota comparando com o seu perfil
@@ -94,8 +94,11 @@ importa e publica. Rodar de novo atualiza sem duplicar e mantém as credenciais.
 
 ### 5. Teste
 
-Mande `/buscar` ao seu bot no Telegram. Ele coleta, analisa e manda o resumo na hora (a
-primeira vez demora mais: busca os últimos 90 dias). `/status` mostra como está o banco.
+Logo depois do `configurar_n8n.sh` chega no Telegram o "Bot de vagas no ar". Com o banco
+vazio, ele pergunta se você quer as vagas dos últimos 30 dias: `/sim` busca agora, analisa
+e manda o resumo (demora mais: a análise leva uns 6 s por vaga); `/nao` segue só com as
+vagas novas, a partir da próxima coleta. Depois, `/buscar` coleta, analisa e manda o resumo
+na hora, e `/status` mostra como está o banco.
 
 ## Configuração
 
@@ -212,8 +215,9 @@ O primeiro confere; o segundo gera o workflow de novo e importa, mantendo as cre
 |---|---|
 | `/vagas` | Resumo agora (vagas analisadas que ainda não foram enviadas) |
 | `/buscar` | Coleta + análise + resumo agora |
-| `/buscar 90` | O mesmo, com as vagas dos últimos 90 dias |
-| `/buscar gupy catho` | Só algumas fontes (dá para juntar: `/buscar 90 gupy`). `/buscar carreiras` roda os sites brasileiros e as páginas de carreira |
+| `/buscar 30` | O mesmo, com as vagas dos últimos 30 dias |
+| `/sim`, `/nao` | Resposta à pergunta do bot com o banco vazio: busca (ou não) as vagas dos últimos 30 dias |
+| `/buscar gupy catho` | Só algumas fontes (dá para juntar: `/buscar 30 gupy`). `/buscar carreiras` roda os sites brasileiros e as páginas de carreira |
 | `/recentes` | Repete as melhores dos últimos 7 dias (`/recentes 3` = 3 dias) |
 | `/status` | Situação do bot e do banco |
 | `/perfil` | Resumo do perfil usado nas notas (`/perfil completo` = texto inteiro) |
