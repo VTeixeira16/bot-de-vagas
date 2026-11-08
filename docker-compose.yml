@@ -1,0 +1,102 @@
+# Bot de vagas no servidor: n8n (roda o workflow) + PostgreSQL (tabela vagas).
+# Passo a passo em docs/servidor.md. Nada exposto na internet,
+# n8n acessado por túnel SSH, segredos só no .env e nas credenciais do n8n.
+name: bot-vagas
+
+services:
+  postgres:
+    # Tag da versão principal: `docker compose pull` traz só correções (16.x).
+    # Trocar de versão principal (ex.: 17) exige dump e restauração.
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=vagas
+      - POSTGRES_USER=vagas
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      - TZ=America/Sao_Paulo
+      - PGTZ=America/Sao_Paulo
+    volumes:
+      - dados_postgres:/var/lib/postgresql/data
+      # Cria a tabela só na primeira subida (banco vazio). Depois, mudanças no schema
+      # são aplicadas à mão (docs/servidor.md, "Comandos úteis").
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vagas -d vagas"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Sem `ports`: só o n8n (rede interna do compose) fala com o banco.
+
+  n8n:
+    # Versão fixa (tag + digest): para atualizar, troque os dois juntos.
+    image: n8nio/n8n:2.44.6@sha256:d02752c6ab446ae9db8deec2f9cc887c378f77cdcad31650814df936b7386dfb
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Nenhum segredo por variável de ambiente: o n8n guarda as credenciais criptografadas
+    # com a chave que fica no volume dados_n8n. Leitura de $env bloqueada nos nós.
+    environment:
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=true
+      # O padrão (::) falha em máquinas sem IPv6
+      - N8N_LISTEN_ADDRESS=0.0.0.0
+      # Endereço que o navegador usa pelo túnel SSH (porta 5679 no Windows, para não
+      # brigar com um n8n local na 5678).
+      - N8N_EDITOR_BASE_URL=http://localhost:5679
+      - WEBHOOK_URL=http://localhost:5679/
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      # A análise diária lê até 300 vagas numa execução (com pausas entre elas): o tempo
+      # máximo de um nó Code sobe de 5 min (padrão) para 2 h.
+      - N8N_RUNNERS_TASK_TIMEOUT=7200
+      # Proteção do n8n contra pedidos a endereços internos (127.x, 10.x, 172.16-31.x,
+      # 192.168.x, 169.254.x...): confere o IP de verdade, também nos redirecionamentos.
+      # Os links das vagas vêm de terceiros; o workflow só fala com sites públicos (o banco
+      # não passa por aqui).
+      - N8N_SSRF_PROTECTION_ENABLED=true
+    volumes:
+      - dados_n8n:/home/node/.n8n
+    # Acesse por túnel SSH (ssh -L 5679:localhost:5678 servidor); não exponha na internet
+    ports:
+      - "127.0.0.1:5678:5678"
+
+  telegram:
+    # Lê os comandos que você manda ao bot (/vagas, /buscar, ...) e repassa ao n8n pela
+    # rede interna. Só faz conexões de saída (long polling no Telegram): sem porta aberta.
+    # Script em servidor/telegram_comandos.py, só biblioteca padrão do Python.
+    image: python:3.12-alpine
+    restart: always
+    depends_on:
+      - n8n
+    # Token e chat id do .env (gravados pelo servidor/configurar_n8n.sh). Vazios, o
+    # container só espera e avisa no log.
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # Segredo que o webhook de comandos do n8n exige (gerado pelo configurar_n8n.sh)
+      - N8N_COMANDO_SEGREDO=${N8N_COMANDO_SEGREDO:-}
+      - TZ=America/Sao_Paulo
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./servidor/telegram_comandos.py:/app/telegram_comandos.py:ro
+    command: ["python3", "/app/telegram_comandos.py"]
+    mem_limit: 64m
+    # Só lê o script e faz conexões de saída: roda sem root, com o sistema de arquivos só
+    # de leitura e sem nenhuma capability do Linux.
+    user: "65534:65534"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  dados_postgres:
+  dados_n8n:

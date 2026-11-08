@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+.DS_Store
+/config/
+/workflow.json
+# Anotações da sua instalação (IP, porta...): docs/servidor.md, "Anotações da sua instalação"
+CLAUDE.local.md
+/local/
