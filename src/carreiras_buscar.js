@@ -122,9 +122,9 @@ async function pedir(helpers, url, method = 'GET', body) {
   return resp;
 }
 
-async function buscarCarreira(helpers, fonte, retroativo = false) {
+async function buscarCarreira(helpers, fonte, retroativo = false, dias = DIAS_RETROATIVO) {
   const plat = PLATAFORMAS[fonte];
-  const dias = retroativo ? DIAS_RETROATIVO : DIAS_RECENTES;
+  const janela = retroativo ? dias : DIAS_RECENTES;
   const saida = new Map();
   const erros = [];
   let pedidos = 0;
@@ -138,7 +138,7 @@ async function buscarCarreira(helpers, fonte, retroativo = false) {
       continue;
     }
     for (const v of lista) {
-      if (saida.has(v.id) || !recente(v.publicado_em, dias)) continue;
+      if (saida.has(v.id) || !recente(v.publicado_em, janela)) continue;
       if (!localDeInteresse(v.local, v.pais) || !tituloDeInteresse(v.titulo)) continue;
       if (!v.texto && plat.detalhar) {
         await new Promise(r => setTimeout(r, PAUSA_CARREIRAS_MS));

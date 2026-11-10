@@ -6,11 +6,11 @@
 // (o /buscar gupy catho ...).
 const FONTES_NOVAS = ['infojobs', 'catho', 'vagas.com', 'remotar', 'trampos', 'greenhouse', 'lever', 'workable'];
 
-async function main(helpers, fontes, retroativo = false) {
+async function main(helpers, fontes, retroativo = false, dias = DIAS_RETROATIVO) {
   const pedidas = String(fontes || 'todas').split(' ');
   const lista = FONTES_NOVAS.filter(f => CONFIG.fontes[f] && (pedidas.includes('todas') || pedidas.includes(f)));
   const inicio = Date.now();
-  const resultados = await Promise.all(lista.map(f => (SITES[f] ? buscarSite : buscarCarreira)(helpers, f, retroativo)));
+  const resultados = await Promise.all(lista.map(f => (SITES[f] ? buscarSite : buscarCarreira)(helpers, f, retroativo, dias)));
   console.log(`Sites e carreiras: ${lista.length} fonte(s) em ${Math.round((Date.now() - inicio) / 1000)} s`);
   return resultados.flat();
 }

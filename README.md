@@ -215,7 +215,7 @@ O primeiro confere; o segundo gera o workflow de novo e importa, mantendo as cre
 |---|---|
 | `/vagas` | Resumo agora (vagas analisadas que ainda não foram enviadas) |
 | `/buscar` | Coleta + análise + resumo agora |
-| `/buscar 30` | O mesmo, com as vagas dos últimos 30 dias |
+| `/buscar 30` | O mesmo, com as vagas dos últimos 30 dias (vale outro prazo: `/buscar 3` = últimos 3 dias) |
 | `/sim`, `/nao` | Resposta à pergunta do bot com o banco vazio: busca (ou não) as vagas dos últimos 30 dias |
 | `/buscar gupy catho` | Só algumas fontes (dá para juntar: `/buscar 30 gupy`). `/buscar carreiras` roda os sites brasileiros e as páginas de carreira |
 | `/recentes` | Repete as melhores dos últimos 7 dias (`/recentes 3` = 3 dias) |

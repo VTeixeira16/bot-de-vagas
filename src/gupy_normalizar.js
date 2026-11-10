@@ -1,7 +1,7 @@
 // Nó "Gupy: normalizar" — junta as respostas do portal da Gupy (uma por termo),
 // remove duplicadas, antigas e descartáveis, e devolve no formato da tabela vagas.
-function main(items, retroativo = false) {
-  const dias = retroativo ? DIAS_RETROATIVO : DIAS_RECENTES;
+function main(items, retroativo = false, dias = DIAS_RETROATIVO) {
+  const janela = retroativo ? dias : DIAS_RECENTES;
   const saida = new Map();
   for (const item of items) {
     const lista = (item.json && Array.isArray(item.json.data)) ? item.json.data : [];
@@ -12,7 +12,7 @@ function main(items, retroativo = false) {
       const titulo = v.name || '';
       if (tituloDescartavel(titulo)) continue;
       const publicado = v.publishedDate || v.publishedAt || null;
-      if (!recente(publicado, dias)) continue;
+      if (!recente(publicado, janela)) continue;
       const modelo = v.workplaceType || (v.isRemoteWork ? 'remote' : '');
       const local = [v.city, v.state, modelo].filter(Boolean).join(' · ');
       const empresa = v.careerPageName || v.companyName || '';

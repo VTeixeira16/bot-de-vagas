@@ -34,8 +34,12 @@ if docker compose exec -T postgres psql -U vagas -d vagas -XtAc "SELECT to_regcl
     -c "SELECT id, status, origem, criado_em::timestamp(0) AS criado_em, length(texto) AS caracteres FROM perfis ORDER BY id DESC LIMIT 5;"
 fi
 if docker compose exec -T postgres psql -U vagas -d vagas -XtAc "SELECT to_regclass('coletas') IS NOT NULL" | grep -q t; then
+  # dias (janela da coleta retroativa, do /buscar N) só existe depois da primeira coleta
+  # com o workflow novo
+  TEM_DIAS=$(docker compose exec -T postgres psql -U vagas -d vagas -XtAc \
+    "SELECT count(*) FROM information_schema.columns WHERE table_name = 'coletas' AND column_name = 'dias'" | tr -d '[:space:]')
   docker compose exec -T postgres psql -U vagas -d vagas -X -P pager=off \
-    -c "SELECT id, iniciada_em::timestamp(0) AS iniciada_em, retroativo FROM coletas ORDER BY id DESC LIMIT 5;"
+    -c "SELECT id, iniciada_em::timestamp(0) AS iniciada_em, retroativo$([ "$TEM_DIAS" = 1 ] && echo ', dias') FROM coletas ORDER BY id DESC LIMIT 5;"
 fi
 
 echo

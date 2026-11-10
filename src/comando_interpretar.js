@@ -28,7 +28,7 @@ const AJUDA = [
   '🤖 <b>Comandos do bot de vagas</b>',
   '/vagas — manda agora o resumo das vagas já analisadas e ainda não enviadas',
   '/buscar — coleta agora em todas as fontes, analisa e manda o resumo',
-  `/buscar ${DIAS_RETROATIVO} — o mesmo, mas buscando as vagas dos últimos ${DIAS_RETROATIVO} dias (demora mais)`,
+  `/buscar ${DIAS_RETROATIVO} — o mesmo, buscando também as vagas mais antigas: até ${DIAS_RETROATIVO} dias (/buscar 7 = últimos 7 dias; demora mais)`,
   `/buscar ${ATIVAS[0]} — só algumas fontes (${ATIVAS.join(', ')}` +
     `${NOVAS.length ? '; carreiras = sites brasileiros e páginas de carreira' : ''}); junta com ${DIAS_RETROATIVO}: /buscar ${DIAS_RETROATIVO} ${ATIVAS.slice(-2).join(' ')}`,
   `/recentes — repete as melhores dos últimos ${DIAS_PADRAO} dias, mesmo as já enviadas (/recentes 3 = 3 dias)`,
@@ -63,7 +63,7 @@ function main(entrada) {
 
   const numeros = resto.map(a => parseInt(a, 10)).filter(n => Number.isFinite(n) && n > 0);
   const n = numeros.length ? numeros[0] : NaN;
-  const dias = Number.isFinite(n) ? Math.min(n, DIAS_MAX) : DIAS_PADRAO;
+  let dias = Number.isFinite(n) ? Math.min(n, DIAS_MAX) : DIAS_PADRAO;
 
   // PDF do currículo: o servidor/telegram_comandos.py manda como /curriculo, com o arquivo
   if (acao === 'curriculo') {
@@ -89,8 +89,8 @@ function main(entrada) {
       texto: `Não entendi "${esc(cortar(texto, 40))}".\n\n${AJUDA}` } }];
   }
 
-  // /buscar [30|tudo] [gupy|linkedin|remotive ...]: em qualquer ordem. /sim (resposta à
-  // pergunta do banco vazio) é o /buscar retroativo
+  // /buscar [N|tudo] [gupy|linkedin|remotive ...]: em qualquer ordem. N > 1 abre a janela
+  // retroativa de N dias. /sim (resposta à pergunta do banco vazio) é o /buscar retroativo
   let retroativo = comando === 'sim';
   const fontes = [];
   if (acao === 'buscar') {
@@ -109,6 +109,8 @@ function main(entrada) {
         texto: (desligada ? `A fonte "${esc(cortar(arg, 30))}"${desligada}.` : `Não conheço a fonte "${esc(cortar(arg, 30))}".`) +
           ` Use: ${ATIVAS.join(', ')}.\n\n${AJUDA}` } }];
     }
+    // Retroativa sem número na mensagem (/sim, /buscar tudo): a janela inteira
+    if (retroativo && !Number.isFinite(n)) dias = DIAS_RETROATIVO;
   }
   const nomesFontes = (fontes.length ? fontes : ATIVAS).map(f => NOME_FONTE_CMD[f]).join(', ');
   return [{ json: { acao, comando, dias, retroativo, fontes, nomesFontes,
