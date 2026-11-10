@@ -249,7 +249,7 @@ entra no backup do passo 8.
 | Abrir o banco | `docker compose exec postgres psql -U vagas -d vagas` |
 | Diagnóstico da coleta (banco, cada fonte testada agora, últimas execuções do n8n por nó) | `bash servidor/diagnostico.sh` |
 | Vagas recusadas (nota abaixo do corte) com o motivo | `bash servidor/recusadas.sh 7` (dias; `--csv` grava em `~/relatorios`) |
-| Buscar de novo as vagas dos últimos 30 dias | mande `/buscar 30` ao bot |
+| Buscar de novo as vagas mais antigas (até 30 dias) | mande `/buscar 30` ao bot (`/buscar 3` = últimos 3 dias) |
 | Aplicar mudança no `schema.sql` (comandos `IF NOT EXISTS`) | `docker compose exec -T postgres psql -U vagas -d vagas < schema.sql` |
 | Reiniciar tudo | `docker compose restart` |
 | Parar tudo (mantém os dados) | `docker compose down` |

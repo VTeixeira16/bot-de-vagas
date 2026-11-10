@@ -156,9 +156,9 @@ const SITES = {
   },
 };
 
-async function buscarSite(helpers, fonte, retroativo = false) {
+async function buscarSite(helpers, fonte, retroativo = false, dias = DIAS_RETROATIVO) {
   const site = SITES[fonte];
-  const dias = retroativo ? DIAS_RETROATIVO : DIAS_RECENTES;
+  const janela = retroativo ? dias : DIAS_RECENTES;
   const paginas = retroativo ? site.paginasRetro : site.paginas;
   const saida = new Map();
   const erros = [];
@@ -183,7 +183,7 @@ async function buscarSite(helpers, fonte, retroativo = false) {
       }
       let antigas = 0;
       for (const v of lista) {
-        if (!recente(v.publicado_em, dias)) { antigas++; continue; }
+        if (!recente(v.publicado_em, janela)) { antigas++; continue; }
         if (saida.has(v.id) || !tituloDeInteresse(v.titulo)) continue;
         saida.set(v.id, {
           fonte, id_externo: v.id, link: v.link, titulo: v.titulo, empresa: v.empresa,

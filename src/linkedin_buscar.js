@@ -5,7 +5,8 @@
 // Para mudar as buscas: faça a busca no LinkedIn (palavras-chave, local, filtros), copie o
 // endereço da barra do navegador e cole em linkedin_buscas, no config.json.
 // Sem local no link, busca no Brasil. Sem filtro de data, pega as das últimas 24 h.
-// Na coleta retroativa, troca a data por DIAS_RETROATIVO dias e lê mais páginas.
+// Na coleta retroativa (/buscar N), troca a data pela janela de N dias (sem número,
+// DIAS_RETROATIVO) e lê mais páginas.
 const BUSCAS = CONFIG.linkedin_buscas;
 const PAGINAS = 4;          // páginas por busca (cada uma traz até 10 vagas)
 const PAGINAS_RETRO = 25;   // na coleta retroativa (até 250 vagas por busca)
@@ -31,11 +32,11 @@ function lerParametros(link) {
   return params;
 }
 
-function urlPublica(link, inicio, retroativo = false) {
+function urlPublica(link, inicio, retroativo = false, dias = DIAS_RETROATIVO) {
   const p = new Map();
   for (const [k, v] of lerParametros(link)) if (!IGNORAR.has(k)) p.set(k, v);
   if (!p.has('location') && !p.has('geoId')) p.set('geoId', GEO_BRASIL);
-  if (retroativo) p.set('f_TPR', `r${DIAS_RETROATIVO * 86400}`);
+  if (retroativo) p.set('f_TPR', `r${dias * 86400}`);
   else if (!p.has('f_TPR')) p.set('f_TPR', JANELA_PADRAO);
   p.set('start', String(inicio));
   const qs = [...p].map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
@@ -60,7 +61,7 @@ function extrairCartoes(html) {
   return vagas;
 }
 
-async function main(helpers, retroativo = false) {
+async function main(helpers, retroativo = false, dias = DIAS_RETROATIVO) {
   const paginas = retroativo ? PAGINAS_RETRO : PAGINAS;
   const vistas = new Map();
   let primeira = true;
@@ -74,7 +75,7 @@ async function main(helpers, retroativo = false) {
       try {
         html = await helpers.httpRequest({
           method: 'GET',
-          url: urlPublica(busca, pagina * POR_PAGINA, retroativo),
+          url: urlPublica(busca, pagina * POR_PAGINA, retroativo, dias),
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
@@ -107,7 +108,8 @@ async function main(helpers, retroativo = false) {
       if (cartoes.length < POR_PAGINA) break;
     }
   }
-  console.log(`LinkedIn: ${vistas.size} vagas em ${BUSCAS.length} busca(s), ${falhas} falha(s)${retroativo ? ' (retroativa)' : ''}`);
+  console.log(`LinkedIn: ${vistas.size} vagas em ${BUSCAS.length} busca(s), ${falhas} falha(s)` +
+    (retroativo ? ` (retroativa, ${dias} dias)` : ''));
   const saida = [...vistas.values()].map(json => ({ json }));
   // Sem vagas e com falha: um item de aviso (o "Salvar" ignora; aparece no diagnóstico)
   if (!saida.length && falhas) saida.push({ json: { aviso: `LinkedIn: ${falhas} falha(s): ${erros.slice(0, 3).join(' | ')}` } });

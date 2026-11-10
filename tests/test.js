@@ -173,9 +173,33 @@ teste('Coleta retroativa: Gupy com 3 páginas por termo e vagas de até 30 dias'
   assert.strictEqual((await rodar('Remotive: normalizar', [rem], RETRO)).length, 1);
 });
 
+teste('Coleta retroativa: /buscar 3 usa a janela de 3 dias em todas as fontes', async () => {
+  const RETRO3 = { 'Janela da coleta': [{ retroativo: true, dias: 3 }] };
+  // LinkedIn: f_TPR de 3 dias, não o de 30
+  const urls = [];
+  const cartao = '<li data-entity-urn="urn:li:jobPosting:4400000010"><h3 class="base-search-card__title">Tech Lead</h3></li>';
+  const helpers = { httpRequest: async ({ url }) => { urls.push(url); return cartao; } };
+  await rodar('LinkedIn: buscar', [{}], RETRO3, helpers);
+  assert.strictEqual(new URL(urls[0]).searchParams.get('f_TPR'), 'r259200', '3 dias');
+  // Gupy e Remotive: vagas de 2 dias entram, as de 20 dias não
+  const ha2dias = new Date(Date.now() - 2 * 86400000).toISOString();
+  const ha20dias = new Date(Date.now() - 20 * 86400000).toISOString();
+  const gupy = (d) => ({ data: [{ id: 7, name: 'Gerente de Tecnologia', publishedDate: d }] });
+  assert.strictEqual((await rodar('Gupy: normalizar', [gupy(ha2dias)], RETRO3)).length, 1);
+  assert.strictEqual((await rodar('Gupy: normalizar', [gupy(ha20dias)], RETRO3)).length, 0, 'fora da janela pedida');
+  const rem = (d) => ({ jobs: [{ id: 8, title: 'Staff AI Engineer', publication_date: d }] });
+  assert.strictEqual((await rodar('Remotive: normalizar', [rem(ha2dias)], RETRO3)).length, 1);
+  assert.strictEqual((await rodar('Remotive: normalizar', [rem(ha20dias)], RETRO3)).length, 0);
+  // Páginas de carreira (o nó novo repassa a janela adiante)
+  const resposta = (d) => ({ jobs: [{ id: 101, title: 'Tech Lead', location: { name: 'São Paulo, Brazil' }, company_name: 'AgroVia', first_published: d }] });
+  const gh = { httpRequest: async ({ url }) => resposta(url.includes('agrovia') ? ha2dias : ha20dias) };
+  assert.strictEqual((await rodarFonte('greenhouse', RETRO3, gh)).length, 1);
+});
+
 teste('Coleta: retroativa só quando pedida; a janela alimenta todas as fontes', () => {
   const j = workflowNo('Janela da coleta');
-  assert.ok(j.parameters.query.includes('SELECT $1::boolean\nRETURNING'), j.parameters.query);
+  assert.ok(j.parameters.query.includes('SELECT $1::boolean, $2::int\nRETURNING'), j.parameters.query);
+  assert.ok(j.parameters.query.includes('ALTER TABLE coletas ADD COLUMN IF NOT EXISTS dias'), 'banco antigo ganha a coluna');
   assert.ok(!j.parameters.query.includes('NOT EXISTS (SELECT 1 FROM coletas'), 'nunca retroativa sozinha');
   assert.deepStrictEqual(wf.connections['Janela da coleta'].main[0].map(c => c.node), ['Quais fontes']);
   const saidas = wf.connections['Quais fontes'].main.map(s => s.map(c => c.node));
@@ -392,14 +416,20 @@ teste('Comando: interpreta /vagas, /buscar, /recentes N, /status e desconhecido'
   assert.strictEqual((await cmd('/vagas')).acao, 'vagas');
   const b = await cmd('/Buscar@MeuBot');
   assert.strictEqual(b.acao, 'buscar'); assert.strictEqual(b.retroativo, false);
-  assert.strictEqual((await cmd('/buscar 30')).retroativo, true);
+  const b30 = await cmd('/buscar 30');
+  assert.deepStrictEqual([b30.retroativo, b30.dias], [true, 30]);
+  const b3 = await cmd('/buscar 3');
+  assert.deepStrictEqual([b3.acao, b3.retroativo, b3.dias], ['buscar', true, 3], 'o número pedido é o que vale');
+  const b45 = await cmd('/buscar 45');
+  assert.strictEqual(b45.dias, 30, 'máximo de 30 dias');
   const sim = await cmd('/sim');
-  assert.deepStrictEqual([sim.acao, sim.retroativo, sim.fontes], ['buscar', true, []]);
+  assert.deepStrictEqual([sim.acao, sim.retroativo, sim.dias, sim.fontes], ['buscar', true, 30, []]);
   const nao = await cmd('/nao');
   assert.strictEqual(nao.acao, 'ajuda');
   assert.ok(nao.texto.includes('sigo só com as vagas novas, a partir da coleta das 07:00') && nao.texto.includes('/buscar 30'), nao.texto);
   assert.strictEqual((await cmd('/não')).acao, 'ajuda');
-  assert.strictEqual((await cmd('/buscar tudo')).retroativo, true);
+  const tudo = await cmd('/buscar tudo');
+  assert.deepStrictEqual([tudo.retroativo, tudo.dias], [true, 30]);
   assert.strictEqual((await cmd('/recentes 90')).retroativo, false);
   assert.strictEqual((await cmd('/status')).acao, 'status');
   assert.strictEqual((await cmd('situação')).acao, 'status');
@@ -433,21 +463,25 @@ teste('Comandos: ligações do workflow', () => {
   for (const n of wf.nodes.filter(n => n.type === 'n8n-nodes-base.telegram')) assert.strictEqual(n.parameters.chatId, 'SEU_CHAT_ID');
 });
 
-teste('Buscar: etapas levam o pedido de 30 dias até a Janela da coleta', async () => {
-  const [e] = await rodar('Etapa: coleta', [{}], { 'Comando: interpretar': [{ retroativo: true }] });
-  assert.deepStrictEqual(e, { etapa: 'coleta', retroativo: true, fontes: 'todas' });
-  const [g] = await rodar('Etapa: coleta', [{}], { 'Comando: interpretar': [{ retroativo: true, fontes: ['gupy', 'remotive'] }] });
+teste('Buscar: etapas levam o pedido de dias até a Janela da coleta', async () => {
+  const [e] = await rodar('Etapa: coleta', [{}], { 'Comando: interpretar': [{ retroativo: true, dias: 3 }] });
+  assert.deepStrictEqual(e, { etapa: 'coleta', retroativo: true, dias: 3, fontes: 'todas' });
+  const [t] = await rodar('Etapa: coleta', [{}], { 'Comando: interpretar': [{ retroativo: true }] });
+  assert.strictEqual(t.dias, 30, 'sem número (/sim), a janela inteira');
+  const [g] = await rodar('Etapa: coleta', [{}], { 'Comando: interpretar': [{ retroativo: true, dias: 3, fontes: ['gupy', 'remotive'] }] });
   assert.strictEqual(g.fontes, 'gupy remotive');
-  const [ag] = await rodar('Buscar: avisar', [{}], { 'Comando: interpretar': [{ retroativo: true, nomesFontes: 'Gupy' }] });
+  const [ag] = await rodar('Buscar: avisar', [{}], { 'Comando: interpretar': [{ retroativo: true, dias: 30, nomesFontes: 'Gupy' }] });
   assert.ok(ag.texto.startsWith('🔎 Buscando vagas agora (Gupy), dos últimos 30 dias'), ag.texto);
+  const [a3] = await rodar('Buscar: avisar', [{}], { 'Comando: interpretar': [{ retroativo: true, dias: 3 }] });
+  assert.ok(a3.texto.includes('últimos 3 dias'), a3.texto);
   const [a] = await rodar('Buscar: avisar', [{}], { 'Comando: interpretar': [{ retroativo: true }] });
   assert.ok(a.texto.includes('últimos 30 dias'), a.texto);
   const [n] = await rodar('Buscar: avisar', [{}], { 'Comando: interpretar': [{ retroativo: false }] });
   assert.ok(!n.texto.includes('últimos'), n.texto);
   const j = wf.nodes.find(n => n.name === 'Janela da coleta').parameters;
-  assert.ok(j.query.includes('SELECT $1::boolean'));
-  assert.strictEqual(j.options.queryReplacement, "={{ [ $json.retroativo === true, $json.fontes || 'todas' ] }}");
-  assert.ok(j.query.includes('$2::text AS fontes'));
+  assert.ok(j.query.includes('SELECT $1::boolean, $2::int'));
+  assert.strictEqual(j.options.queryReplacement, "={{ [ $json.retroativo === true, $json.dias || 30, $json.fontes || 'todas' ] }}");
+  assert.ok(j.query.includes('dias, $2::text AS fontes'));
 });
 
 teste('Buscar: escolhe as fontes (/buscar 30 gupy) e o switch segue só por elas', async () => {

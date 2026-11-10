@@ -2,8 +2,8 @@
 // (categoria em termos_de_busca.remotive_categoria). Pré-filtra pelo título
 // (tituloDeInteresse, filtro_titulo do config.json) para só mandar ao LLM o que pode interessar.
 
-function main(items, retroativo = false) {
-  const dias = retroativo ? DIAS_RETROATIVO : DIAS_RECENTES;
+function main(items, retroativo = false, dias = DIAS_RETROATIVO) {
+  const janela = retroativo ? dias : DIAS_RECENTES;
   const saida = new Map();
   for (const item of items) {
     const lista = (item.json && Array.isArray(item.json.jobs)) ? item.json.jobs : [];
@@ -12,7 +12,7 @@ function main(items, retroativo = false) {
       const id = String(v.id);
       const titulo = v.title || '';
       if (saida.has(id) || !tituloDeInteresse(titulo)) continue;
-      if (!recente(v.publication_date, dias)) continue;
+      if (!recente(v.publication_date, janela)) continue;
       const local = `Remoto · ${v.candidate_required_location || 'não informado'}`;
       const descricao = htmlParaTexto(v.description || '');
       saida.set(id, {

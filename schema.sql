@@ -32,13 +32,14 @@ CREATE OR REPLACE FUNCTION link_chave(l text) RETURNS text LANGUAGE sql IMMUTABL
 $f$;
 CREATE INDEX IF NOT EXISTS vagas_link_chave_idx ON vagas (link_chave(link));
 
--- Uma linha por coleta; retroativo = buscou os últimos 30 dias (só quando pedido: /sim à
--- pergunta do banco vazio ou /buscar 30). O nó "Janela da coleta" também cria esta tabela
--- se ela faltar.
+-- Uma linha por coleta; retroativo = buscou além das vagas novas, com a janela de `dias`
+-- (2 a 30; só quando pedido: /sim à pergunta do banco vazio ou /buscar N). O nó "Janela da
+-- coleta" também cria esta tabela (e a coluna dias, em bancos antigos) se faltar.
 CREATE TABLE IF NOT EXISTS coletas (
   id          bigserial   PRIMARY KEY,
   iniciada_em timestamptz NOT NULL DEFAULT now(),
-  retroativo  boolean     NOT NULL
+  retroativo  boolean     NOT NULL,
+  dias        int         NOT NULL DEFAULT 30
 );
 
 -- Perfis montados a partir do PDF do currículo mandado ao bot no Telegram. O 'ativo' (só

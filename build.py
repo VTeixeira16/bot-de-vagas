@@ -172,6 +172,7 @@ def etapa(nome, pos, qual):
     """Roda uma etapa (coleta, análise, resumo) neste mesmo workflow e espera terminar."""
     c = code(f"Etapa: {qual}", pos, "const cmd = $('Comando: interpretar').first().json;\n"
              f"return [{{ json: {{ etapa: '{qual}', retroativo: cmd.retroativo === true, "
+             f"dias: cmd.dias || {DIAS_RETRO}, "
              "fontes: (cmd.fontes || []).join(' ') || 'todas' } }];")
     e = node(nome, "n8n-nodes-base.executeWorkflow", 1.2, (pos[0] + 260, pos[1]), {
         "source": "database",
@@ -239,17 +240,21 @@ FILTRO_FONTES = "($1::text = 'todas' OR {col} = ANY(string_to_array($1::text, ' 
 NOME_COLETA = f"Coletar ({configuracao.lista_humana(HORA['coleta'], 'e')})"
 t1 = agenda(NOME_COLETA, (0, 300), HORA["coleta"])
 
-# Diz se esta coleta é a retroativa (últimos DIAS_RETROATIVO dias): só quando pedida pelo
-# /sim (resposta à pergunta do banco vazio) ou pelo /buscar 30 (chega com retroativo =
-# true); nunca sozinha. Cria a tabela se faltar.
-j1 = sql("Janela da coleta", (200, 300), """CREATE TABLE IF NOT EXISTS coletas (
+# Diz se esta coleta é a retroativa (/buscar N, de 2 a DIAS_RETROATIVO dias) e com que
+# janela: só quando pedida pelo /sim (resposta à pergunta do banco vazio) ou pelo /buscar
+# com número (chega com retroativo = true e dias = N); nunca sozinha. Cria a tabela (e a
+# coluna dias, em bancos antigos) se faltar.
+j1 = sql("Janela da coleta", (200, 300), f"""CREATE TABLE IF NOT EXISTS coletas (
   id          bigserial   PRIMARY KEY,
   iniciada_em timestamptz NOT NULL DEFAULT now(),
-  retroativo  boolean     NOT NULL
+  retroativo  boolean     NOT NULL,
+  dias        int         NOT NULL DEFAULT {DIAS_RETRO}
 );
-""" + LINK_CHAVE + """INSERT INTO coletas (retroativo)
-SELECT $1::boolean
-RETURNING retroativo, $2::text AS fontes;""", "={{ [ $json.retroativo === true, $json.fontes || 'todas' ] }}")
+ALTER TABLE coletas ADD COLUMN IF NOT EXISTS dias int NOT NULL DEFAULT {DIAS_RETRO};
+""" + LINK_CHAVE + f"""INSERT INTO coletas (retroativo, dias)
+SELECT $1::boolean, $2::int
+RETURNING retroativo, dias, $2::text AS fontes;""",
+       "={{ [ $json.retroativo === true, $json.dias || " + str(DIAS_RETRO) + ", $json.fontes || 'todas' ] }}")
 liga(t1, j1)
 
 # Fontes desta coleta: todas as ligadas no config.json (fontes) no horário; o /buscar gupy
@@ -277,28 +282,30 @@ f1 = node("Quais fontes", "n8n-nodes-base.switch", 3.2, (200, 500), {"rules": {"
 } for saida, fs in SAIDAS.items()]}, "looseTypeValidation": True, "options": {"allMatchingOutputs": True}})
 liga(j1, f1)
 RETRO = "$('Janela da coleta').first().json.retroativo === true"
+# Janela (em dias) desta coleta quando ela é retroativa: /buscar N usa os últimos N dias
+DIAS_JANELA = f"($('Janela da coleta').first().json.dias || {DIAS_RETRO})"
 
 c1 = code("LinkedIn: buscar", (460, 0),
-          js("linkedin_buscar.js", f"return await main(this.helpers, {RETRO});"))
+          js("linkedin_buscar.js", f"return await main(this.helpers, {RETRO}, {DIAS_JANELA});"))
 s1 = sql("Salvar (LinkedIn)", (720, 0), INSERT, PARAM_JSON)
 liga(f1, c1, 0); liga(c1, s1)
 
 c2 = code("Gupy: termos de busca", (460, 200), js("gupy_termos.js", f"return main({RETRO});"))
 h2 = code("Gupy: buscar", (720, 200), js("gupy_buscar.js", "return await main($input.all(), this.helpers);"))
-c2b = code("Gupy: normalizar", (980, 200), js("gupy_normalizar.js", f"return main($input.all(), {RETRO});"))
+c2b = code("Gupy: normalizar", (980, 200), js("gupy_normalizar.js", f"return main($input.all(), {RETRO}, {DIAS_JANELA});"))
 s2 = sql("Salvar (Gupy)", (1240, 200), INSERT, PARAM_JSON)
 liga(f1, c2, 1); liga(c2, h2); liga(h2, c2b); liga(c2b, s2)
 
 REMOTIVE_CAT = urllib.parse.quote(CFG["termos_de_busca"]["remotive_categoria"])
 h3 = get("Remotive: buscar", (460, 400), f"https://remotive.com/api/remote-jobs?category={REMOTIVE_CAT}&limit=200")
-c3 = code("Remotive: normalizar", (720, 400), js("remotive_normalizar.js", f"return main($input.all(), {RETRO});", FILTRO))
+c3 = code("Remotive: normalizar", (720, 400), js("remotive_normalizar.js", f"return main($input.all(), {RETRO}, {DIAS_JANELA});", FILTRO))
 s3 = sql("Salvar (Remotive)", (980, 400), INSERT, PARAM_JSON)
 liga(f1, h3, 2); liga(h3, c3); liga(c3, s3)
 
 # Sites brasileiros e páginas de carreira num nó só, em paralelo (src/fontes_novas.js)
 FONTES_JANELA = "$('Janela da coleta').first().json.fontes"
 cn = code("Sites e carreiras: buscar", (460, -200),
-          js("fontes_novas.js", f"return await main(this.helpers, {FONTES_JANELA}, {RETRO});",
+          js("fontes_novas.js", f"return await main(this.helpers, {FONTES_JANELA}, {RETRO}, {DIAS_JANELA});",
              "\n".join([FILTRO, *(fonte_js(f) for f in ("sites_buscar.js", "carreiras_buscar.js"))])))
 sn = sql("Salvar (sites e carreiras)", (720, -200), INSERT, PARAM_JSON)
 liga(f1, cn, 3); liga(cn, sn)
@@ -433,7 +440,7 @@ c13 = code("Buscar: avisar", (780, 2000),
            "const cmd = $('Comando: interpretar').first().json;\n"
            "const r = cmd.retroativo === true;\n"
            "return [{ json: { texto: '🔎 Buscando vagas agora (' + (cmd.nomesFontes || 'todas as fontes') + ')' + "
-           "(r ? ', dos últimos " + str(DIAS_RETRO) + " dias' : '') + '. Depois vem a análise, uns 6 s por vaga; ' + "
+           f"(r ? ', dos últimos ' + (cmd.dias || {DIAS_RETRO}) + ' dias' : '') + '. Depois vem a análise, uns 6 s por vaga; ' + "
            "'o resumo chega no fim' + ((cmd.fontes || []).length ? ', só com estas fontes (as outras ficam para as "
            + HORA["resumo"] + ").' : '.') } }];")
 tg3 = telegram("Telegram: avisar busca", (1040, 2000))
