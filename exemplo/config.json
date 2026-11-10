@@ -1,0 +1,105 @@
+{
+  "_leia": "EXEMPLO de configuração. Copie a pasta exemplo para config (cp -r exemplo config), troque os valores e o perfil.md, e rode no servidor: bash servidor/configurar_n8n.sh. Cada campo está explicado no README (seção Configuração). Campos que começam com _ são só comentários.",
+
+  "nome": "",
+  "modelo_gemini": "gemini-flash-latest",
+  "modelos_reserva": ["gemini-flash-lite-latest"],
+  "_modelos_reserva": "Tentados na ordem quando o modelo_gemini está sem cota (429) ou sobrecarregado (503). No plano gratuito cada modelo tem a própria cota.",
+
+  "horarios": {
+    "_ajuda": "Horário de Brasília, no formato HH:MM. A coleta pode ter vários horários.",
+    "coleta": ["07:00", "19:00"],
+    "analise": "07:30",
+    "resumo": "09:30"
+  },
+
+  "resumo": {
+    "_ajuda": "nota_minima: nota (0 a 100) para a vaga aparecer no resumo. max_vagas: quantas por resumo; as que sobrarem vão no próximo.",
+    "nota_minima": 70,
+    "max_vagas": 20
+  },
+
+  "fontes": {
+    "_ajuda": "true = liga, false = desliga.",
+    "linkedin": true,
+    "gupy": true,
+    "remotive": true,
+    "infojobs": true,
+    "catho": true,
+    "vagas.com": true,
+    "remotar": true,
+    "trampos": true,
+    "greenhouse": true,
+    "lever": true,
+    "workable": true
+  },
+
+  "linkedin_buscas": [
+    "https://www.linkedin.com/jobs/search/?keywords=%22engenheiro%20de%20dados%22%20OR%20%22data%20engineer%22"
+  ],
+
+  "termos_de_busca": {
+    "_ajuda": "cargos: pesquisados na Gupy e nos sites brasileiros. assuntos: só na Gupy (trazem vagas de qualquer cargo daquele assunto). remotive_categoria: software-dev, data, devops, product, design...",
+    "cargos": [
+      "engenheiro de dados",
+      "engenheira de dados",
+      "analista de dados",
+      "cientista de dados",
+      "coordenador de dados"
+    ],
+    "assuntos": [
+      "engenharia de dados",
+      "data lake"
+    ],
+    "remotive_categoria": "data"
+  },
+
+  "paginas_de_carreira": {
+    "_ajuda": "Empresa = identificador no endereço da página de vagas (job-boards.greenhouse.io/<id>, jobs.lever.co/<id>, apply.workable.com/<id>) e o nome que aparece no resumo (\"\" = o nome que a página informar).",
+    "greenhouse": {
+      "nubank": "Nubank",
+      "vtex": "VTEX"
+    },
+    "lever": {},
+    "workable": {}
+  },
+
+  "filtro_titulo": {
+    "_ajuda": "Vale para Remotive, sites brasileiros e páginas de carreira (cada vaga que passa é uma consulta ao Gemini). Sem acento e sem maiúsculas na comparação. Termo inteiro por padrão; com * no fim aceita continuações (dado* = dado, dados...). Passa a vaga que tiver um termo de basta_ter, ou um termo de cada grupo de ou_ter_um_de_cada_grupo, e nenhum de recusar. Tudo vazio = passa tudo.",
+    "basta_ter": ["data engineer*", "engenheir* de dados", "cientista de dados", "data scientist*"],
+    "ou_ter_um_de_cada_grupo": [
+      ["analista*", "analyst*", "engenheir*", "engineer*", "coordena*", "especialista*", "lead"],
+      ["dado*", "data", "bi", "analytics", "etl"]
+    ],
+    "recusar": ["vendas*", "comercial*", "rh", "recursos humanos", "marketing*"]
+  },
+
+  "descartar_titulos": {
+    "_ajuda": "Títulos descartados em todas as fontes, antes de qualquer análise. Mesmas regras de comparação do filtro_titulo.",
+    "com": ["estagiário", "estagiária", "estágio", "trainee", "aprendiz", "intern", "internship"],
+    "comecando_com": ["assistente", "auxiliar", "atendente", "operador", "vendedor", "promotor"]
+  },
+
+  "locais_de_interesse": {
+    "_ajuda": "Só para as páginas de carreira (que trazem vagas do mundo todo): passa a vaga cujo local tenha uma destas palavras ou cujo país seja um destes códigos. Vazio = qualquer local.",
+    "palavras": ["brasil*", "brazil*", "belo horizonte", "minas gerais", "latam*", "latin america", "anywhere", "worldwide"],
+    "paises": ["BR", "BRA"]
+  },
+
+  "avaliacao": {
+    "_ajuda": "Regras que o Gemini usa para dar a nota (junto com o perfil.md). areas: as categorias de vaga que interessam. pontos_area: quanto vale cada tipo de vaga no bloco Cargo e área (0 a 40). senioridades_com_teto: níveis que ficam com nota máxima 30 (junior_ou_abaixo, pleno, senior, especialista_staff, lideranca_tecnica, coordenacao, gerencia, head_diretoria).",
+    "regiao": "Grande Belo Horizonte",
+    "areas": [
+      { "nome": "engenharia_dados", "descricao": "engenharia de dados, pipelines, data lake, ETL" },
+      { "nome": "analise_dados", "descricao": "análise de dados, BI, dashboards" }
+    ],
+    "pontos_area": [
+      "engenharia de dados = 34–40",
+      "análise de dados ou BI = 24–33",
+      "outras áreas de tecnologia = 8–18",
+      "fora de tecnologia = 0"
+    ],
+    "pontos_senioridade": "sênior ou especialista = 25; pleno = 20; liderança técnica = 18; júnior = 8; estágio ou trainee = 0",
+    "senioridades_com_teto": ["junior_ou_abaixo"]
+  }
+}

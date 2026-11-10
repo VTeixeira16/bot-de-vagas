@@ -1,0 +1,224 @@
+{
+  "_leia": "Configuração do bot de vagas. Cada campo está explicado no README (seção Configuração). Depois de mudar, rode no servidor: bash servidor/configurar_n8n.sh",
+  "nome": "Teste",
+  "modelo_gemini": "gemini-flash-latest",
+  "modelos_reserva": [
+    "gemini-flash-lite-latest"
+  ],
+  "_modelos_reserva": "Tentados na ordem quando o modelo_gemini está sem cota (429) ou sobrecarregado (503). No plano gratuito cada modelo tem a própria cota.",
+  "horarios": {
+    "_ajuda": "Horário de Brasília, no formato HH:MM. A coleta pode ter vários horários.",
+    "coleta": [
+      "07:00",
+      "19:00"
+    ],
+    "analise": "07:30",
+    "resumo": "09:30"
+  },
+  "resumo": {
+    "_ajuda": "nota_minima: nota (0 a 100) para a vaga aparecer no resumo. max_vagas: quantas por resumo; as que sobrarem vão no próximo.",
+    "nota_minima": 70,
+    "max_vagas": 20
+  },
+  "fontes": {
+    "_ajuda": "true = liga, false = desliga.",
+    "linkedin": true,
+    "gupy": true,
+    "remotive": true,
+    "infojobs": true,
+    "catho": true,
+    "vagas.com": true,
+    "remotar": true,
+    "trampos": true,
+    "greenhouse": true,
+    "lever": true,
+    "workable": true
+  },
+  "linkedin_buscas": [
+    "https://www.linkedin.com/jobs/search-results/?keywords=%28%22Gerente%20de%20Engenharia%22%20OR%20%22Engineering%20Manager%22%20OR%20%22Tech%20Lead%22%29%20AND%20%28agroneg%C3%B3cio%20OR%20agtech%20OR%20telemetria%20OR%20IoT%29&origin=SUGGESTION"
+  ],
+  "termos_de_busca": {
+    "_ajuda": "cargos: pesquisados na Gupy e nos sites brasileiros. assuntos: só na Gupy (trazem vagas de qualquer cargo daquele assunto).",
+    "cargos": [
+      "gerente de engenharia",
+      "engineering manager",
+      "tech lead",
+      "líder técnico",
+      "coordenador de engenharia",
+      "gerente de tecnologia",
+      "head de engenharia",
+      "arquiteto de software"
+    ],
+    "assuntos": [
+      "agronegócio",
+      "agtech",
+      "agricultura de precisão",
+      "telemetria",
+      "IoT",
+      "sensores",
+      "máquinas agrícolas",
+      "rastreabilidade",
+      "LoRaWAN"
+    ],
+    "remotive_categoria": "software-dev"
+  },
+  "paginas_de_carreira": {
+    "_ajuda": "Empresa = identificador no endereço da página de vagas (job-boards.greenhouse.io/<id>, jobs.lever.co/<id>, apply.workable.com/<id>) e o nome que aparece no resumo (\"\" = o nome que a página informar).",
+    "greenhouse": {
+      "agrovia": "AgroVia",
+      "campotech": "",
+      "safrabit": ""
+    },
+    "lever": {
+      "terravista": "TerraVista",
+      "sementeforte": ""
+    },
+    "workable": {
+      "plantiomax": "PlantioMax",
+      "graoaberto": "Grão Aberto"
+    }
+  },
+  "filtro_titulo": {
+    "_ajuda": "Vale para Remotive, sites brasileiros e páginas de carreira (cada vaga que passa é uma consulta ao Gemini). Sem acento e sem maiúsculas na comparação. Termo inteiro por padrão; com * no fim aceita continuações (coordena* = coordenador, coordenação...). Passa a vaga que tiver um termo de basta_ter, ou um termo de cada grupo de ou_ter_um_de_cada_grupo, e nenhum de recusar.",
+    "basta_ter": [
+      "agtech*",
+      "agro*",
+      "agricultura de precisão",
+      "iot",
+      "telemetria*",
+      "ia",
+      "ai",
+      "llm*"
+    ],
+    "ou_ter_um_de_cada_grupo": [
+      [
+        "gerente*",
+        "gestor*",
+        "coordena*",
+        "líder*",
+        "lead",
+        "head",
+        "manager*",
+        "diretor*",
+        "director*",
+        "staff",
+        "principal*",
+        "arquitet*",
+        "architect*"
+      ],
+      [
+        "engenharia*",
+        "engineer*",
+        "engineering",
+        "software*",
+        "tecnolog*",
+        "ti",
+        "t i",
+        "sistemas*",
+        "tech",
+        "plataforma*",
+        "platform*",
+        "embarcad*",
+        "embedded",
+        "sensor*",
+        "dados",
+        "data",
+        "cloud*",
+        "backend*",
+        "back end*"
+      ]
+    ],
+    "recusar": [
+      "comercial*",
+      "vendas*",
+      "marketing*",
+      "rh",
+      "recursos humanos",
+      "financeir*",
+      "contab*",
+      "jurídic*",
+      "segurança do trabalho",
+      "elétric*",
+      "civil*",
+      "obras*",
+      "loja*",
+      "atendimento*"
+    ]
+  },
+  "descartar_titulos": {
+    "_ajuda": "Títulos descartados em todas as fontes, antes de qualquer análise. Mesmas regras de comparação do filtro_titulo.",
+    "com": [
+      "estagiário",
+      "estagiária",
+      "estágio",
+      "trainee",
+      "júnior",
+      "jr",
+      "aprendiz",
+      "intern",
+      "internship"
+    ],
+    "comecando_com": [
+      "assistente",
+      "auxiliar",
+      "atendente",
+      "operador",
+      "vendedor",
+      "promotor"
+    ]
+  },
+  "locais_de_interesse": {
+    "_ajuda": "Só para as páginas de carreira (que trazem vagas do mundo todo): passa a vaga cujo local tenha uma destas palavras ou cujo país seja um destes códigos.",
+    "palavras": [
+      "brasil*",
+      "brazil*",
+      "curitiba*",
+      "pr",
+      "são josé dos pinhais",
+      "pinhais*",
+      "latam*",
+      "latin america",
+      "américa latina",
+      "south america",
+      "americas",
+      "anywhere",
+      "worldwide",
+      "global"
+    ],
+    "paises": [
+      "BR",
+      "BRA"
+    ]
+  },
+  "avaliacao": {
+    "_ajuda": "Regras que o Gemini usa para dar a nota (junto com o perfil.md). areas: as categorias de vaga que interessam. pontos_area: quanto vale cada tipo de vaga no bloco Cargo e área (0 a 40). senioridades_com_teto: níveis que ficam com nota máxima 30 (junior_ou_abaixo, pleno, senior, especialista_staff, lideranca_tecnica, coordenacao, gerencia, head_diretoria).",
+    "regiao": "Grande Curitiba",
+    "areas": [
+      {
+        "nome": "lideranca_agtech",
+        "descricao": "liderança/gestão de engenharia em agronegócio, agricultura de precisão ou máquinas agrícolas"
+      },
+      {
+        "nome": "engenharia_iot",
+        "descricao": "IoT, telemetria, sensores e sistemas embarcados conectados"
+      },
+      {
+        "nome": "gestao_ti",
+        "descricao": "coordenação/gerência de TI ou engenharia em geral"
+      }
+    ],
+    "pontos_area": [
+      "agronegócio/agtech com papel de liderança = 36–40",
+      "IoT/telemetria com liderança = 28–35",
+      "engenharia de IoT/sensores sem liderança = 24–32",
+      "coordenação/gerência de TI ou engenharia em geral = 22–32",
+      "outras áreas de tecnologia = 8–18",
+      "fora de tecnologia = 0"
+    ],
+    "pontos_senioridade": "coordenação, gerência, liderança técnica, staff, especialista, principal = 25; head/diretoria = 18; sênior sem liderança = 12; pleno ou abaixo = 0",
+    "senioridades_com_teto": [
+      "junior_ou_abaixo",
+      "pleno"
+    ]
+  }
+}
