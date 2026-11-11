@@ -10,14 +10,21 @@ function erroGemini(resp) {
   const e = resp && resp.error;
   if (!e) return null;
   const msg = String(typeof e === 'string' ? e : (e.message || JSON.stringify(e)));
-  const codigo = Number((msg.match(/^\s*(\d{3})\b/) || [])[1] || e.httpCode || e.code || e.status || 0) || 0;
+  // O nó HTTP do n8n troca a message do 429 por uma dica de batching ("Try spacing your
+  // requests out...") e deixa o código no statusCode (o httpCode é do NodeApiError, e
+  // code/status do AxiosError vêm como texto, que não vira número)
+  const codigo = Number((msg.match(/^\s*(\d{3})\b/) || [])[1] || e.httpCode || e.statusCode || e.code || e.status || 0) || 0;
   let tipo = 'outro';
   if (codigo === 402 || /prepay|credits? (are )?depleted|billing/i.test(msg)) tipo = 'cobranca';
-  else if (codigo === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) tipo = 'cota';
+  else if (codigo === 429 || /RESOURCE_EXHAUSTED|quota|too many requests|try spacing your requests out/i.test(msg)) tipo = 'cota';
   else if (codigo === 401 || codigo === 403 || /API_KEY_INVALID|API key not valid|PERMISSION_DENIED/i.test(msg)) tipo = 'chave';
   else if ([500, 502, 503, 504].includes(codigo) || /overloaded|high demand|UNAVAILABLE/i.test(msg)) tipo = 'sobrecarga';
-  // Só a frase do Google, sem o JSON em volta (vem escapado dentro da mensagem do n8n)
-  const frase = (msg.replace(/\\+"/g, '"').match(/"message":\s*"([^"]{5,200})/) || [])[1] || msg;
+  // Só a frase do Google, sem o JSON em volta (vem escapado dentro da mensagem do n8n).
+  // No 429 embrulhado pelo n8n, a frase do Google, quando sobra, está no corpo da resposta
+  let corpo = e.response && (e.response.data !== undefined ? e.response.data : e.response.body);
+  if (typeof corpo === 'string') { try { corpo = JSON.parse(corpo); } catch (x) { corpo = null; } }
+  const doGoogle = corpo && corpo.error && typeof corpo.error.message === 'string' ? corpo.error.message : '';
+  const frase = doGoogle || (msg.replace(/\\+"/g, '"').match(/"message":\s*"([^"]{5,200})/) || [])[1] || msg;
   return { codigo, tipo, detalhe: cortar(frase.replace(/\\n/g, ' ').trim(), 160) };
 }
 

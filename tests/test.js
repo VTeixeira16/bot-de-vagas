@@ -1065,6 +1065,24 @@ teste('Gemini: cota ou sobrecarga tenta o modelo de reserva; cobrança e chave n
   const c1 = await rodar('Análise: conferir resposta', [RESP_OK, erroN8n(429, 'Quota exceeded')], { 'Análise: tentativa': t1 });
   assert.deepStrictEqual(c1.map(v => [v.id, v.refazer, v.modelo, v.erro_gemini && v.erro_gemini.tipo]),
     [[2, false, 'gemini-flash-lite-latest', null], [3, false, 'gemini-flash-lite-latest', 'cota']]);
+
+  // 429 embrulhado pelo nó HTTP do n8n (o que apareceu no servidor): a message vira a
+  // dica de batching e o código fica no statusCode; sem reconhecer, vira tipo "outro" —
+  // não tenta reserva, não avisa e gasta tentativa da vaga
+  const dicaN8n = "Try spacing your requests out using the batching settings under 'Options'";
+  const axios429 = { error: { message: dicaN8n, name: 'AxiosError', statusCode: 429 } };
+  const ca = await rodar('Análise: conferir resposta', [axios429], { 'Análise: tentativa': t0 });
+  assert.strictEqual(ca[0].refazer, true, '429 do n8n tenta o modelo de reserva');
+  // Na última tentativa, segue como cota — com a frase do Google do corpo da resposta
+  const ultimo = [{ id: 9, fonte: 'gupy', llm_body: {}, _tentativa: 1, modelo: 'gemini-flash-lite-latest' }];
+  const comCorpo = { error: { message: dicaN8n, name: 'AxiosError', statusCode: 429,
+    response: { data: { error: { code: 429, message: 'Resource has been exhausted (e.g. check quota)., per minute' } } } } };
+  const cf = await rodar('Análise: conferir resposta', [comCorpo, axios429], { 'Análise: tentativa': ultimo.concat(ultimo) });
+  assert.strictEqual(cf[0].refazer, false);
+  assert.deepStrictEqual(cf[0].erro_gemini, { codigo: 429, tipo: 'cota', detalhe: 'Resource has been exhausted (e.g. check quota)., per minute' });
+  assert.strictEqual(cf[1].erro_gemini.tipo, 'cota', 'sem corpo, a dica do n8n ainda classifica como cota');
+  const [aviso429] = await rodar('Análise: avisar problema no Gemini', [cf[0]]);
+  assert.ok(aviso429.texto.includes('per minute'), aviso429.texto);
   // Ligações: o "outro modelo?" volta para a tentativa (saída 0) ou segue (saída 1)
   const lig = (o, s = 0) => (wf.connections[o].main[s] || []).map(x => x.node);
   assert.deepStrictEqual(lig('Análise: montar requisição'), ['Análise: tentativa']);
