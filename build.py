@@ -253,7 +253,7 @@ j1 = sql("Janela da coleta", (200, 300), f"""CREATE TABLE IF NOT EXISTS coletas 
 ALTER TABLE coletas ADD COLUMN IF NOT EXISTS dias int NOT NULL DEFAULT {DIAS_RETRO};
 """ + LINK_CHAVE + f"""INSERT INTO coletas (retroativo, dias)
 SELECT $1::boolean, $2::int
-RETURNING retroativo, dias, $2::text AS fontes;""",
+RETURNING retroativo, dias, $3::text AS fontes;""",
        "={{ [ $json.retroativo === true, $json.dias || " + str(DIAS_RETRO) + ", $json.fontes || 'todas' ] }}")
 liga(t1, j1)
 

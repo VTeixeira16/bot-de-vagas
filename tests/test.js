@@ -481,7 +481,40 @@ teste('Buscar: etapas levam o pedido de dias até a Janela da coleta', async () 
   const j = wf.nodes.find(n => n.name === 'Janela da coleta').parameters;
   assert.ok(j.query.includes('SELECT $1::boolean, $2::int'));
   assert.strictEqual(j.options.queryReplacement, "={{ [ $json.retroativo === true, $json.dias || 30, $json.fontes || 'todas' ] }}");
-  assert.ok(j.query.includes('dias, $2::text AS fontes'));
+  assert.ok(j.query.includes('dias, $3::text AS fontes'));
+});
+
+// Saída que o RETURNING da "Janela da coleta" devolve: cada $N do SQL vira o elemento
+// N-1 do array de parâmetros. É o que alimenta o switch "Quais fontes" — se o
+// placeholder das fontes estiver errado, o dias vira fontes ("30") e nenhuma fonte liga.
+function saidaJanela(item) {
+  const j = wf.nodes.find(n => n.name === 'Janela da coleta').parameters;
+  const m = j.query.match(/\$(\d+)::text AS fontes/);
+  assert.ok(m, 'o RETURNING devolve as fontes');
+  const params = new Function('$json', 'return ' + j.options.queryReplacement
+    .replace(/^=\{\{/, '').replace(/\}\}$/, ''))(item);
+  return { retroativo: params[0], dias: params[1], fontes: params[m[1] - 1] };
+}
+
+// Avalia as condições do switch "Quais fontes" como o n8n faria: saídas que ligam
+function fontesLigadas(fontes) {
+  const regras = wf.nodes.find(n => n.name === 'Quais fontes').parameters;
+  assert.strictEqual(regras.options.allMatchingOutputs, true);
+  return regras.rules.values.filter(r => {
+    const expr = r.conditions.conditions[0].leftValue.replace(/^=\{\{/, '').replace(/\}\}$/, '');
+    return new Function('$json', `return (${expr});`)({ fontes });
+  }).map(r => r.outputKey);
+}
+
+teste('Janela da coleta devolve as fontes (não o dias) e o switch liga por elas', () => {
+  // Horário agendado (item do gatilho, sem nada) e /buscar 3: as fontes chegam 'todas'
+  assert.deepStrictEqual(saidaJanela({}), { retroativo: false, dias: 30, fontes: 'todas' });
+  assert.deepStrictEqual(saidaJanela({ retroativo: true, dias: 3, fontes: 'todas' }), { retroativo: true, dias: 3, fontes: 'todas' });
+  const g = saidaJanela({ retroativo: true, dias: 3, fontes: 'gupy linkedin' });
+  assert.strictEqual(g.fontes, 'gupy linkedin');
+  // O switch liga com a saída de verdade da Janela (bug do placeholder dava 0 saídas)
+  assert.deepStrictEqual(fontesLigadas(saidaJanela({}).fontes), ['linkedin', 'gupy', 'remotive', 'novas']);
+  assert.deepStrictEqual(fontesLigadas(g.fontes), ['linkedin', 'gupy']);
 });
 
 teste('Buscar: escolhe as fontes (/buscar 30 gupy) e o switch segue só por elas', async () => {
@@ -503,12 +536,7 @@ teste('Buscar: escolhe as fontes (/buscar 30 gupy) e o switch segue só por elas
   assert.ok((await cmd('/ajuda')).texto.includes('junta com 30: /buscar 30 lever workable'));
 
   // Avalia as condições do switch "Quais fontes" como o n8n faria
-  const regras = wf.nodes.find(n => n.name === 'Quais fontes').parameters;
-  assert.strictEqual(regras.options.allMatchingOutputs, true);
-  const passa = (fontes) => regras.rules.values.filter(r => {
-    const expr = r.conditions.conditions[0].leftValue.replace(/^=\{\{/, '').replace(/\}\}$/, '');
-    return new Function('$json', `return (${expr});`)({ fontes });
-  }).map(r => r.outputKey);
+  const passa = fontesLigadas;
   assert.deepStrictEqual(passa('todas'), ['linkedin', 'gupy', 'remotive', 'novas']);
   assert.deepStrictEqual(passa('gupy'), ['gupy']);
   assert.deepStrictEqual(passa('linkedin remotive'), ['linkedin', 'remotive']);
