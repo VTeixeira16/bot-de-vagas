@@ -111,7 +111,10 @@ def gemini(nome, pos, timeout=90000):
         "sendBody": True,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.llm_body) }}",
-        "options": {"batching": {"batch": {"batchSize": GEMINI_LOTE, "batchInterval": GEMINI_INTERVALO_MS}}, "timeout": timeout},
+        # neverError: resposta de erro (429, 503...) chega inteira, com o motivo que o Google
+        # deu; sem isso o n8n troca o 429 por uma dica de batching e o motivo se perde
+        "options": {"batching": {"batch": {"batchSize": GEMINI_LOTE, "batchInterval": GEMINI_INTERVALO_MS}}, "timeout": timeout,
+                    "response": {"response": {"neverError": True}}},
     }, onError="continueRegularOutput", retryOnFail=True, maxTries=3, waitBetweenTries=5000)
 
 

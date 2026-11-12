@@ -1085,6 +1085,31 @@ teste('Gemini: cota ou sobrecarga tenta o modelo de reserva; cobrança e chave n
   assert.strictEqual(cf[1].erro_gemini.tipo, 'cota', 'sem corpo, a dica do n8n ainda classifica como cota');
   const [aviso429] = await rodar('Análise: avisar problema no Gemini', [cf[0]]);
   assert.ok(aviso429.texto.includes('per minute'), aviso429.texto);
+  // O nó HTTP não transforma a resposta de erro em exceção (neverError): o corpo do Google
+  // chega inteiro, e o aviso diz qual limite estourou (por minuto ou por dia) e em que modelo
+  for (const n of ['Análise: pontuar (Gemini)', 'Currículo: montar perfil (Gemini)']) {
+    const no = workflowNo(n);
+    if (no) assert.strictEqual(no.parameters.options.response.response.neverError, true, n);
+  }
+  assert.ok(wf.nodes.filter(n => String(n.parameters.url || '').includes('generativelanguage')).every(n => n.parameters.options.response.response.neverError === true));
+  const google429 = { error: { code: 429, status: 'RESOURCE_EXHAUSTED',
+    message: 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 35.5s.',
+    details: [
+      { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaMetric: 'generativelanguage.googleapis.com/generate_content_free_tier_requests',
+        quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', quotaDimensions: { location: 'global', model: 'gemini-2.5-flash' }, quotaValue: '20' }] },
+      { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '35s' }] } };
+  const cg = await rodar('Análise: conferir resposta', [google429, google429], { 'Análise: tentativa': [t0[0]].concat(ultimo) });
+  assert.strictEqual(cg[0].refazer, true, '429 do Google tenta o modelo de reserva');
+  assert.deepStrictEqual(cg[1].erro_gemini, { codigo: 429, tipo: 'cota',
+    detalhe: 'limite por dia de 20 pedidos (gemini-2.5-flash); o Google pede para esperar 35s' });
+  // Sem os details, o limite e a espera saem da frase
+  const semDetalhes = { error: { ...google429.error, details: undefined } };
+  const [cs] = await rodar('Análise: conferir resposta', [semDetalhes], { 'Análise: tentativa': ultimo });
+  assert.strictEqual(cs.erro_gemini.detalhe, 'limite de 20 (gemini-2.5-flash); o Google pede para esperar 35s');
+  // Sobrecarga e chave recusada chegam no mesmo formato
+  const [c503, c400] = await rodar('Análise: conferir resposta', [{ error: { code: 503, message: 'The model is overloaded.', status: 'UNAVAILABLE' } },
+    { error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT' } }], { 'Análise: tentativa': ultimo.concat(ultimo) });
+  assert.deepStrictEqual([c503.erro_gemini.tipo, c400.erro_gemini.tipo], ['sobrecarga', 'chave']);
   // Ligações: o "outro modelo?" volta para a tentativa (saída 0) ou segue (saída 1)
   const lig = (o, s = 0) => (wf.connections[o].main[s] || []).map(x => x.node);
   assert.deepStrictEqual(lig('Análise: montar requisição'), ['Análise: tentativa']);
