@@ -132,7 +132,7 @@ Cuidados gerais:
   por causa de uma instalação com faturamento.
 - **Reserva e avisos:** com 429 ou 5xx, o pedido volta pelo laço *tentativa → HTTP →
   conferir resposta → outro modelo?* com o próximo de `modelos_reserva` (padrão
-  `gemini-flash-lite-latest`; `src/gemini_erros.js` classifica: cobranca, cota, chave,
+  `gemini-flash-lite-latest`; o nó HTTP usa `neverError`, para o corpo do erro do Google chegar inteiro (sem isso o n8n troca o 429 por uma dica de batching); `src/gemini_erros.js` classifica: cobranca, cota (o aviso diz qual limite: por minuto ou por dia, de quantos pedidos e em qual modelo), chave,
   sobrecarga, outro). Erro de serviço na análise: a vaga volta a `pendente` (sem gastar
   tentativa) e vai um aviso no Telegram (*Análise: avisar problema no Gemini*). No
   currículo, sobrecarga/cota em todos os modelos espera 2, 5 e 10 min (nó Wait) e tenta de
