@@ -341,7 +341,7 @@ WHERE id IN (
 )
 RETURNING id, fonte, id_externo, link, titulo, empresa, local, texto;""", PARAM_FONTES)
 c5 = code("Análise: completar descrição", (520, 900),
-          js("analise_completar.js", "return await main($input.all(), this.helpers);"))
+          js("analise_completar.js", "return await main($input.all(), this.helpers);", FILTRO))
 i5 = node("Descrição ok?", "n8n-nodes-base.if", 2.2, (780, 900), {
     "conditions": {
         "options": {"caseSensitive": True, "leftValue": "", "typeValidation": "loose", "version": 2},
@@ -370,9 +370,20 @@ s7 = sql("Salvar análise", (2600, 820), """UPDATE vagas v SET
 FROM jsonb_to_record($1::jsonb) AS r(fonte text, id_externo text, status text, titulo text,
      empresa text, local text, texto text, score int, analise jsonb)
 WHERE v.fonte = r.fonte AND v.id_externo = r.id_externo;""", "={{ [ JSON.stringify($json.registro) ] }}")
+# Vaga que não seguiu para o Gemini: título fora do filtro_titulo -> "descartada" (não volta);
+# página que não abriu -> continua "pendente" e é tentada de novo nas próximas análises (o
+# LinkedIn recusa leituras em sequência), até MAX_LEITURAS; aí vira "erro_fetch" e vai para
+# o resumo só com o link. O "Pegar pendentes" já contou esta tentativa.
+MAX_LEITURAS = 3
 s8 = sql("Marcar sem leitura", (1040, 1000),
-         "UPDATE vagas SET status = 'erro_fetch', analisado_em = now() WHERE id = $1::bigint;",
-         "={{ [ $json.id ] }}")
+         f"""UPDATE vagas SET
+  status = CASE WHEN $2::boolean THEN 'descartada'
+                WHEN tentativas >= {MAX_LEITURAS} THEN 'erro_fetch'
+                ELSE 'pendente' END,
+  analise = jsonb_build_object('erro', $3::text),
+  analisado_em = now()
+WHERE id = $1::bigint;""",
+         "={{ [ $json.id, $json.fora_do_filtro === true, $json.erro || '' ] }}")
 liga(t2, s4); liga(s4, s5); liga(s5, c5); liga(c5, i5)
 liga(i5, c6, 0); liga(i5, s8, 1)
 liga(c6, t6); liga(r6, c7, 1); liga(r6, c7a, 1); liga(c7a, tg7a); liga(c7, s7)

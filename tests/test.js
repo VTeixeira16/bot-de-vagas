@@ -94,6 +94,17 @@ teste('LinkedIn: busca pública a partir do link, várias páginas, sem duplicar
   assert.strictEqual(ultima.texto, null);
 });
 
+teste('LinkedIn: cartões sem título legível seguem para a análise, com aviso', async () => {
+  const cartao = (id, titulo) => `<li><div data-entity-urn="urn:li:jobPosting:${id}">${titulo ? `<h3 class="base-search-card__title">${titulo}</h3>` : ''}</div></li>`;
+  // A página mudou: nenhum título. As vagas seguem (a análise confere o filtro) e sai um aviso
+  const mudou = await rodar('LinkedIn: buscar', [{}], NORMAL, { httpRequest: async () => cartao(4400000001) + cartao(4400000002) });
+  assert.deepStrictEqual(mudou.map(v => v.id_externo || 'aviso'), ['4400000001', '4400000002', 'aviso']);
+  assert.ok(mudou[2].aviso.startsWith('LinkedIn: 2 vaga(s) sem título legível'), mudou[2].aviso);
+  // Um cartão sem título no meio dos outros: segue, sem aviso
+  const um = await rodar('LinkedIn: buscar', [{}], NORMAL, { httpRequest: async () => cartao(4400000001) + cartao(4400000002, 'Tech Lead') + cartao(4400000003, 'Coordenador Fiscal') });
+  assert.deepStrictEqual(um.map(v => v.id_externo || 'aviso'), ['4400000001', '4400000002']);
+});
+
 teste('LinkedIn: falha ou bloqueio não derruba a coleta', async () => {
   const out = await rodar('LinkedIn: buscar', [{}], NORMAL, { httpRequest: async () => { throw new Error('429'); } });
   // Só um aviso (sem fonte/id), que o "Salvar" ignora e o diagnóstico mostra
@@ -230,6 +241,34 @@ teste('Análise: lê página pública do LinkedIn e trata falha', async () => {
   assert.ok(out[0].texto.includes('LoRaWAN'));
   assert.strictEqual(out[1].ok, false);
   assert.strictEqual(out[2].ok, true);
+});
+
+teste('Análise: confere o filtro_titulo de novo antes de ler a página e de chamar o Gemini', async () => {
+  // Vagas coletadas com um filtro mais frouxo, que o usuário apertou depois
+  const pagina = (titulo) => `<h1 class="top-card-layout__title">${titulo}</h1>
+    <div class="show-more-less-html__markup">${'Descrição da vaga. '.repeat(20)}</div>`;
+  const lidas = [];
+  const helpers = { httpRequest: async ({ url }) => { lidas.push(url.split('/').pop()); return pagina(url.endsWith('/4') ? 'Coordenador Fiscal' : 'Tech Lead'); } };
+  const out = await rodar('Análise: completar descrição', [
+    { id: 1, fonte: 'linkedin', id_externo: '1', titulo: 'Tech Lead de Plataforma', texto: null },
+    { id: 2, fonte: 'linkedin', id_externo: '2', titulo: 'Coordenador Contábil', texto: null },
+    { id: 3, fonte: 'gupy', id_externo: '3', titulo: 'Analista Júnior de Sistemas', texto: 'já tem' },
+    { id: 4, fonte: 'linkedin', id_externo: '4', titulo: null, texto: null },
+    { id: 5, fonte: 'linkedin', id_externo: '5', titulo: null, texto: null },
+  ], {}, helpers, SEM_PAUSA);
+  assert.deepStrictEqual(lidas, ['1', '4', '5'], 'fora do filtro nem abre a página');
+  assert.deepStrictEqual(out.map(v => [v.ok, v.fora_do_filtro === true]),
+    [[true, false], [false, true], [false, true], [false, true], [true, false]]);
+  assert.strictEqual(out[3].titulo, 'Coordenador Fiscal', 'sem título na lista: vale o da página');
+  // Fora do filtro vira "descartada"; página que não abriu volta à fila até a 3ª tentativa
+  const s = workflowNo('Marcar sem leitura').parameters;
+  assert.strictEqual(s.options.queryReplacement, "={{ [ $json.id, $json.fora_do_filtro === true, $json.erro || '' ] }}");
+  assert.ok(s.query.includes("WHEN $2::boolean THEN 'descartada'"));
+  assert.ok(s.query.includes("WHEN tentativas >= 3 THEN 'erro_fetch'") && s.query.includes("ELSE 'pendente'"));
+  assert.ok(s.query.includes('$3::text'), 'os três parâmetros são usados');
+  // "descartada" não vai para o resumo nem conta como pendente
+  assert.ok(!workflowNo('Vagas a notificar').parameters.query.includes('descartada'));
+  assert.ok(!workflowNo('Pegar pendentes').parameters.query.includes('descartada'));
 });
 
 teste('Análise: requisição leva perfil, prompt e schema', async () => {
@@ -645,7 +684,7 @@ teste('Análise: lê a descrição dos outros sites pelo JobPosting', async () =
   const urls = [];
   const out = await rodar('Análise: completar descrição', [
     { id: 1, fonte: 'trampos', id_externo: '9', link: 'https://trampos.co/oportunidades/9', titulo: 'Tech Lead', texto: null },
-    { id: 2, fonte: 'catho', id_externo: '8', link: 'https://www.catho.com.br/vagas/x/8', titulo: 'Gerente', texto: null },
+    { id: 2, fonte: 'catho', id_externo: '8', link: 'https://www.catho.com.br/vagas/x/8', titulo: 'Gerente de TI', texto: null },
     { id: 3, fonte: 'remotar', id_externo: '7', link: 'https://remotar.com.br/job/7', titulo: 'IA', texto: 'já tem' },
   ], {}, { httpRequest: async ({ url }) => { urls.push(url); if (url.includes('catho')) return '<html>sem dados</html>'; return pagina; } }, SEM_PAUSA);
   assert.deepStrictEqual(urls, ['https://trampos.co/oportunidades/9', 'https://www.catho.com.br/vagas/x/8']);
@@ -754,9 +793,9 @@ teste('Análise: uma fila por site, sites diferentes ao mesmo tempo, ordem manti
     return pagina(url);
   } };
   const entrada = [
-    { id: 1, fonte: 'catho', id_externo: 'a', link: 'https://www.catho.com.br/a', texto: null },
-    { id: 2, fonte: 'trampos', id_externo: 'b', link: 'https://trampos.co/b', texto: null },
-    { id: 3, fonte: 'catho', id_externo: 'c', link: 'https://www.catho.com.br/c', texto: null },
+    { id: 1, fonte: 'catho', id_externo: 'a', link: 'https://www.catho.com.br/a', titulo: 'Tech Lead', texto: null },
+    { id: 2, fonte: 'trampos', id_externo: 'b', link: 'https://trampos.co/b', titulo: 'Tech Lead', texto: null },
+    { id: 3, fonte: 'catho', id_externo: 'c', link: 'https://www.catho.com.br/c', titulo: 'Tech Lead', texto: null },
     { id: 4, fonte: 'greenhouse', id_externo: 'd', link: 'https://boards.greenhouse.io/d', texto: 'já tem' },
   ];
   const out = await rodar('Análise: completar descrição', entrada, {}, helpers, SEM_PAUSA);

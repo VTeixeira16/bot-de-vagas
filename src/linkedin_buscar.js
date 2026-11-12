@@ -64,6 +64,8 @@ function extrairCartoes(html) {
 async function main(helpers, retroativo = false, dias = DIAS_RETROATIVO) {
   const paginas = retroativo ? PAGINAS_RETRO : PAGINAS;
   const vistas = new Map();
+  let cartoesLidos = 0;
+  let semTitulo = 0;
   let primeira = true;
   let falhas = 0;
   const erros = [];
@@ -94,8 +96,11 @@ async function main(helpers, retroativo = false, dias = DIAS_RETROATIVO) {
       if (cartoes.length === 0) break;
       for (const c of cartoes) {
         // A busca do LinkedIn é aproximada ("coordenador de TI" traz qualquer coordenador):
-        // só segue o título que passa no filtro_titulo
-        if (vistas.has(c.id) || !tituloDeInteresse(c.titulo)) continue;
+        // só segue o título que passa no filtro_titulo. Cartão sem título legível segue: a
+        // análise lê o título na página da vaga e confere o filtro lá
+        cartoesLidos++;
+        if (!c.titulo) semTitulo++;
+        if (vistas.has(c.id) || (c.titulo && !tituloDeInteresse(c.titulo))) continue;
         vistas.set(c.id, {
           fonte: 'linkedin',
           id_externo: c.id,
@@ -114,6 +119,11 @@ async function main(helpers, retroativo = false, dias = DIAS_RETROATIVO) {
     (retroativo ? ` (retroativa, ${dias} dias)` : ''));
   const saida = [...vistas.values()].map(json => ({ json }));
   // Sem vagas e com falha: um item de aviso (o "Salvar" ignora; aparece no diagnóstico)
+  // Nenhum cartão com título: o LinkedIn deve ter mudado a página. Sem este aviso o filtro
+  // deixaria de valer na coleta sem ninguém perceber
+  if (cartoesLidos && semTitulo === cartoesLidos) {
+    saida.push({ json: { aviso: `LinkedIn: ${semTitulo} vaga(s) sem título legível (a página mudou?); o filtro_titulo só vai valer na análise` } });
+  }
   if (!saida.length && falhas) saida.push({ json: { aviso: `LinkedIn: ${falhas} falha(s): ${erros.slice(0, 3).join(' | ')}` } });
   return saida;
 }
