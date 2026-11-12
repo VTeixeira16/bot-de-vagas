@@ -1,5 +1,5 @@
-// Filtro de título da Remotive, dos sites generalistas e das páginas de carreira
-// (remotive_normalizar.js, sites_buscar.js e carreiras_buscar.js), pelo filtro_titulo do
+// Filtro de título de todas as fontes (linkedin_buscar.js, gupy_normalizar.js,
+// remotive_normalizar.js, sites_buscar.js e carreiras_buscar.js), pelo filtro_titulo do
 // config.json: passa o título que tiver um termo de basta_ter, ou um termo de cada grupo de
 // ou_ter_um_de_cada_grupo, e nenhum de recusar. Sem nenhum termo, passa tudo (menos os
 // descartados). Cada vaga que passa custa uma chamada ao Gemini. O build.py junta este

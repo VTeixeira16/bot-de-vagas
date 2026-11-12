@@ -1,5 +1,5 @@
 // Nó "Gupy: normalizar" — junta as respostas do portal da Gupy (uma por termo),
-// remove duplicadas, antigas e descartáveis, e devolve no formato da tabela vagas.
+// remove duplicadas, antigas e as que não passam no filtro_titulo, e devolve no formato da tabela vagas.
 function main(items, retroativo = false, dias = DIAS_RETROATIVO) {
   const janela = retroativo ? dias : DIAS_RECENTES;
   const saida = new Map();
@@ -10,7 +10,8 @@ function main(items, retroativo = false, dias = DIAS_RETROATIVO) {
       const id = String(v.id);
       if (saida.has(id)) continue;
       const titulo = v.name || '';
-      if (tituloDescartavel(titulo)) continue;
+      // A busca da Gupy é aproximada: só segue o título que passa no filtro_titulo
+      if (!tituloDeInteresse(titulo)) continue;
       const publicado = v.publishedDate || v.publishedAt || null;
       if (!recente(publicado, janela)) continue;
       const modelo = v.workplaceType || (v.isRemoteWork ? 'remote' : '');

@@ -79,7 +79,7 @@
     }
   },
   "filtro_titulo": {
-    "_ajuda": "Vale para Remotive, sites brasileiros e páginas de carreira (cada vaga que passa é uma consulta ao Gemini). Sem acento e sem maiúsculas na comparação. Termo inteiro por padrão; com * no fim aceita continuações (coordena* = coordenador, coordenação...). Passa a vaga que tiver um termo de basta_ter, ou um termo de cada grupo de ou_ter_um_de_cada_grupo, e nenhum de recusar.",
+    "_ajuda": "Vale para todas as fontes, inclusive LinkedIn e Gupy (cada vaga que passa é uma consulta ao Gemini). Sem acento e sem maiúsculas na comparação. Termo inteiro por padrão; com * no fim aceita continuações (coordena* = coordenador, coordenação...). Passa a vaga que tiver um termo de basta_ter, ou um termo de cada grupo de ou_ter_um_de_cada_grupo, e nenhum de recusar.",
     "basta_ter": [
       "agtech*",
       "agro*",

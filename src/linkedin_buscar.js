@@ -93,7 +93,9 @@ async function main(helpers, retroativo = false, dias = DIAS_RETROATIVO) {
       const cartoes = extrairCartoes(String(html));
       if (cartoes.length === 0) break;
       for (const c of cartoes) {
-        if (vistas.has(c.id) || tituloDescartavel(c.titulo)) continue;
+        // A busca do LinkedIn é aproximada ("coordenador de TI" traz qualquer coordenador):
+        // só segue o título que passa no filtro_titulo
+        if (vistas.has(c.id) || !tituloDeInteresse(c.titulo)) continue;
         vistas.set(c.id, {
           fonte: 'linkedin',
           id_externo: c.id,
