@@ -19,6 +19,11 @@
     "max_vagas": 20
   },
 
+  "analise": {
+    "_ajuda": "max_vagas: quantas vagas cada análise manda ao Gemini (1 a 300); as outras esperam a próxima. Com cota diária pequena no plano gratuito, ponha um número que caiba nela.",
+    "max_vagas": 300
+  },
+
   "fontes": {
     "_ajuda": "true = liga, false = desliga.",
     "linkedin": true,

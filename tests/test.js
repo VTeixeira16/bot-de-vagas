@@ -763,6 +763,16 @@ teste('Mesmo link não é analisado duas vezes (SQL do Salvar e do Pegar pendent
   }
   const p = workflowNo('Pegar pendentes').parameters.query;
   assert.ok(p.indexOf("SET status = 'duplicada'") < p.indexOf('SET tentativas = tentativas + 1'));
+  // Vaga republicada (outro link): mesma fonte, título, empresa e local, nos últimos 30 dias
+  const dup = p.slice(p.indexOf("SET status = 'duplicada'"), p.indexOf('SET tentativas = tentativas + 1'));
+  for (const trecho of ['o.fonte = d.fonte', 'lower(btrim(o.titulo)) = lower(btrim(d.titulo))', 'lower(btrim(o.empresa)) = lower(btrim(d.empresa))',
+    "lower(btrim(COALESCE(o.local, ''))) = lower(btrim(COALESCE(d.local, '')))", "o.coletado_em > now() - interval '30 days'",
+    "btrim(COALESCE(d.titulo, '')) <> ''", "btrim(COALESCE(d.empresa, '')) <> ''", "NOT LIKE '%confidencial%'"]) {
+    assert.ok(dup.includes(trecho), trecho);
+  }
+  // O link igual ou a republicada só contam se a outra já foi analisada ou é uma pendente mais antiga
+  assert.ok(dup.indexOf("o.status = 'analisada'") > dup.indexOf("interval '30 days'"));
+  assert.strictEqual((dup.match(/\(/g) || []).length, (dup.match(/\)/g) || []).length, 'parênteses fechados');
   // Testado num PostgreSQL de verdade por tests/test_link_chave.sh (quando houver um)
 });
 
@@ -882,6 +892,32 @@ teste('Config: o que falta vem do padrão (opção nova não quebra config antig
   assert.ok(w.nodes.some(n => n.name === 'Coletar (07:00 e 19:00)'));
   const req = w.nodes.find(n => n.name === 'Análise: montar requisição').parameters.jsCode;
   assert.ok(req.includes('"dados_e_bi" (dados) ou \\"outra\\"') || req.includes('dados_e_bi'), 'nome da área vira id');
+});
+
+teste('Config: analise.max_vagas limita quantas vagas cada análise manda ao Gemini', () => {
+  assert.ok(workflowNo('Pegar pendentes').parameters.query.includes('LIMIT 300\n'), 'padrão');
+  const r = conferirConfig(mudar(c => { c.analise = { max_vagas: 18 }; }));
+  assert.ok(r.ok, r.saida);
+  const w = gerar(r.pasta, 'limite.json');
+  assert.ok(w.nodes.find(n => n.name === 'Pegar pendentes').parameters.query.includes('LIMIT 18\n'));
+  for (const ruim of [0, 301]) {
+    const e = conferirConfig(mudar(c => { c.analise = { max_vagas: ruim }; }));
+    assert.ok(!e.ok && e.saida.includes('analise.max_vagas: use um número inteiro de 1 a 300'), String(ruim));
+  }
+  // Tipo errado já é recusado na leitura do arquivo
+  for (const ruim of ['20', 2.5, true]) {
+    const e = conferirConfig(mudar(c => { c.analise = { max_vagas: ruim }; }));
+    assert.ok(!e.ok && e.saida.includes('analise.max_vagas'), String(ruim));
+  }
+});
+
+teste('Um User-Agent só, no util.js', () => {
+  for (const [nome, c] of Object.entries(codigo)) {
+    assert.ok((c.match(/Mozilla\/5\.0/g) || []).length <= 1, nome);
+  }
+  for (const n of ['LinkedIn: buscar', 'Gupy: buscar', 'Sites e carreiras: buscar', 'Análise: completar descrição']) {
+    assert.ok(codigo[n].includes("'User-Agent': UA_NAVEGADOR"), n);
+  }
 });
 
 teste('Config: horários mudam os gatilhos, os nomes e as mensagens', async () => {

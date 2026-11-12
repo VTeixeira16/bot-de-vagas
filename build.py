@@ -326,7 +326,17 @@ s5 = sql("Pegar pendentes", (260, 900), LINK_CHAVE + """UPDATE vagas d SET statu
 WHERE (d.status = 'pendente' OR (d.status = 'erro_llm' AND d.tentativas < 3))
   AND EXISTS (
     SELECT 1 FROM vagas o
-    WHERE o.id <> d.id AND link_chave(o.link) = link_chave(d.link)
+    WHERE o.id <> d.id
+      AND (link_chave(o.link) = link_chave(d.link)
+           -- vaga republicada: outro link, mas a mesma fonte, título, empresa e local nos
+           -- últimos 30 dias (empresa confidencial não conta: são vagas diferentes)
+           OR (o.fonte = d.fonte
+               AND btrim(COALESCE(d.titulo, '')) <> '' AND btrim(COALESCE(d.empresa, '')) <> ''
+               AND lower(d.empresa) NOT LIKE '%confidencial%'
+               AND lower(btrim(o.titulo)) = lower(btrim(d.titulo))
+               AND lower(btrim(o.empresa)) = lower(btrim(d.empresa))
+               AND lower(btrim(COALESCE(o.local, ''))) = lower(btrim(COALESCE(d.local, '')))
+               AND o.coletado_em > now() - interval '30 days'))
       AND (o.status = 'analisada'
            OR ((o.status = 'pendente' OR (o.status = 'erro_llm' AND o.tentativas < 3)) AND o.id < d.id))
   );
@@ -336,7 +346,7 @@ WHERE id IN (
   WHERE (status = 'pendente' OR (status = 'erro_llm' AND tentativas < 3))
     AND """ + FILTRO_FONTES.format(col="fonte") + """
   ORDER BY coletado_em
-  LIMIT 300
+  LIMIT """ + str(CFG["analise"]["max_vagas"]) + """
   FOR UPDATE SKIP LOCKED
 )
 RETURNING id, fonte, id_externo, link, titulo, empresa, local, texto;""", PARAM_FONTES)

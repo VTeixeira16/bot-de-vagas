@@ -61,6 +61,7 @@ SELECT fonte,
        count(*) FILTER (WHERE status = 'analisada' AND score >= $CORTE) AS acima_do_corte,
        count(*) FILTER (WHERE status = 'analisada' AND score < $CORTE) AS abaixo,
        count(*) FILTER (WHERE status = 'duplicada') AS duplicadas,
+       count(*) FILTER (WHERE status = 'descartada') AS fora_do_filtro,
        count(*) FILTER (WHERE status IN ('erro_fetch', 'erro_llm')) AS erros,
        max(coletado_em)::timestamp(0) AS ultima_coleta
 FROM vagas GROUP BY fonte ORDER BY fonte;"

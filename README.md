@@ -131,6 +131,7 @@ Campos que começam com `_` são só comentários.
 | `modelos_reserva` | Tentados na ordem quando o modelo principal está sem cota ou sobrecarregado (padrão `["gemini-flash-lite-latest"]`). No plano gratuito, cada modelo tem a própria cota |
 | `horarios` | `coleta` (lista de `"HH:MM"`), `analise` e `resumo`, no horário de Brasília |
 | `resumo` | `nota_minima` (0–100) para a vaga aparecer e `max_vagas` por resumo; as que sobram vão no próximo |
+| `analise` | `max_vagas` (1–300, padrão 300): quantas vagas cada análise manda ao Gemini; as outras esperam a próxima. Com cota diária pequena no plano gratuito, ponha um número que caiba nela |
 | `fontes` | `true`/`false` para cada fonte. Desligada, ela some da coleta, do `/buscar` e do `/ajuda` |
 | `linkedin_buscas` | Links de buscas feitas no LinkedIn ([veja abaixo](#linkedin)) |
 | `termos_de_busca` | `cargos`: pesquisados na Gupy e nos sites brasileiros. `assuntos`: só na Gupy (trazem vagas de qualquer cargo daquele assunto). `remotive_categoria`: `software-dev`, `data`, `devops`, `product`... |

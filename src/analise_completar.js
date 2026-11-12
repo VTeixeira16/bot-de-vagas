@@ -127,20 +127,22 @@ function foraDoFiltro(v) {
   return true;
 }
 
+// HTML da página, cortado em MAX_HTML
+async function lerPagina(helpers, url) {
+  const html = await helpers.httpRequest({
+    method: 'GET',
+    url,
+    headers: { 'User-Agent': UA_NAVEGADOR, 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' },
+    json: false,
+    timeout: 20000,
+  });
+  return String(html).slice(0, MAX_HTML);
+}
+
 async function completar(v, helpers) {
   if (v.fonte === 'linkedin') {
     try {
-      const html = await helpers.httpRequest({
-        method: 'GET',
-        url: `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${v.id_externo}`,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-        },
-        json: false,
-        timeout: 20000,
-      });
-      const d = extrairVagaLinkedin(String(html).slice(0, MAX_HTML));
+      const d = extrairVagaLinkedin(await lerPagina(helpers, `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${v.id_externo}`));
       if (!d.titulo && d.descricao.length < 200) throw new Error('página sem conteúdo de vaga');
       v.titulo = d.titulo || v.titulo;
       v.empresa = d.empresa || v.empresa;
@@ -162,17 +164,7 @@ async function completar(v, helpers) {
     return;
   }
   try {
-    const html = await helpers.httpRequest({
-      method: 'GET',
-      url: v.link,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-      },
-      json: false,
-      timeout: 20000,
-    });
-    const d = extrairJobPosting(String(html).slice(0, MAX_HTML));
+    const d = extrairJobPosting(await lerPagina(helpers, v.link));
     if (!d || d.descricao.length < 100) throw new Error('página sem dados da vaga (JobPosting)');
     v.titulo = v.titulo || d.titulo;
     v.empresa = v.empresa || d.empresa;
