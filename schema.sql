@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS vagas (
   local         text,
   texto         text,                              -- descrição usada na análise
   publicado_em  timestamptz,
-  status        text        NOT NULL DEFAULT 'pendente', -- pendente | analisada | duplicada | erro_fetch | erro_llm
+  status        text        NOT NULL DEFAULT 'pendente', -- pendente | analisada | duplicada | descartada | erro_fetch | erro_llm
   tentativas    int         NOT NULL DEFAULT 0,
   score         int,
   analise       jsonb,                             -- saída completa do LLM

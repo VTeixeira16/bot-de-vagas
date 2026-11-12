@@ -41,6 +41,9 @@ PADRAO = {
     "modelos_reserva": ["gemini-flash-lite-latest"],
     "horarios": {"coleta": ["07:00", "19:00"], "analise": "07:30", "resumo": "09:30"},
     "resumo": {"nota_minima": 70, "max_vagas": 20},
+    # Quantas vagas cada análise manda ao Gemini (as outras esperam a próxima). Quem tem
+    # cota diária pequena no plano gratuito põe aqui um número que caiba nela
+    "analise": {"max_vagas": 300},
     "fontes": {f: True for f in FONTES},
     "linkedin_buscas": [],
     "termos_de_busca": {"cargos": [], "assuntos": [], "remotive_categoria": "software-dev"},
@@ -179,6 +182,9 @@ def conferir(cfg, erros, avisos):
         erros.append("resumo.nota_minima: use um número de 0 a 100")
     if not 1 <= r["max_vagas"] <= 100:
         erros.append("resumo.max_vagas: use um número de 1 a 100")
+    a = cfg["analise"]
+    if isinstance(a["max_vagas"], bool) or not isinstance(a["max_vagas"], int) or not 1 <= a["max_vagas"] <= 300:
+        erros.append("analise.max_vagas: use um número inteiro de 1 a 300")
 
     if not str(cfg["modelo_gemini"]).strip():
         erros.append("modelo_gemini: não pode ficar vazio")

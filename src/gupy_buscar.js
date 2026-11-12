@@ -26,7 +26,7 @@ async function main(items, helpers) {
         let resp = await helpers.httpRequest({
           method: 'GET',
           url: `${base}?${qs}`,
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', Accept: 'application/json' },
+          headers: { 'User-Agent': UA_NAVEGADOR, Accept: 'application/json' },
           json: true,
           timeout: 30000,
         });

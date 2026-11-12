@@ -9,7 +9,6 @@
 // custa uma chamada ao Gemini.
 const TERMOS_SITES = CONFIG.termos_de_busca.cargos;
 const PAUSA_SITES_MS = 2000;
-const UA_SITES = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
 function slug(termo) {
   return normalizarChave(termo).replace(/\s+/g, '-');
@@ -171,7 +170,7 @@ async function buscarSite(helpers, fonte, retroativo = false, dias = DIAS_RETROA
         let resp = await helpers.httpRequest({
           method: 'GET',
           url: site.url(termo, p),
-          headers: { 'User-Agent': UA_SITES, 'Accept-Language': 'pt-BR,pt;q=0.9', Accept: site.json ? 'application/json' : 'text/html' },
+          headers: { 'User-Agent': UA_NAVEGADOR, 'Accept-Language': 'pt-BR,pt;q=0.9', Accept: site.json ? 'application/json' : 'text/html' },
           json: !!site.json,
           timeout: 30000,
         });

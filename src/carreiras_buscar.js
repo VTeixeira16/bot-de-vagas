@@ -15,7 +15,6 @@ const EMPRESAS_CARREIRAS = Object.fromEntries(Object.entries(CONFIG.paginas_de_c
 const NOME_EMPRESA = Object.assign({}, ...Object.values(CONFIG.paginas_de_carreira).map(m =>
   Object.fromEntries(Object.entries(m).filter(([, nome]) => nome))));
 const PAUSA_CARREIRAS_MS = 1500;
-const UA_CARREIRAS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
 // Sem nenhuma palavra nem país em locais_de_interesse, passa qualquer local.
 function localDeInteresse(local, pais = '') {
@@ -115,7 +114,7 @@ const PLATAFORMAS = {
 async function pedir(helpers, url, method = 'GET', body) {
   let resp = await helpers.httpRequest({
     method, url, json: true, timeout: 30000,
-    headers: { 'User-Agent': UA_CARREIRAS, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    headers: { 'User-Agent': UA_NAVEGADOR, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body } : {}),
   });
   if (typeof resp === 'string') resp = JSON.parse(resp);

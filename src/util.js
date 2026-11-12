@@ -4,6 +4,8 @@ const MODELO = CONFIG.modelo_gemini;
 const DIAS_RECENTES = 3; // ignora vagas publicadas há mais tempo (Gupy/Remotive)
 // Coleta retroativa (/sim à pergunta do banco vazio, ou /buscar 30): últimos 30 dias.
 const DIAS_RETROATIVO = 30;
+// Os sites de vagas recusam pedidos sem cara de navegador
+const UA_NAVEGADOR = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
 const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" };
 
