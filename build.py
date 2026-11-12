@@ -286,13 +286,13 @@ RETRO = "$('Janela da coleta').first().json.retroativo === true"
 DIAS_JANELA = f"($('Janela da coleta').first().json.dias || {DIAS_RETRO})"
 
 c1 = code("LinkedIn: buscar", (460, 0),
-          js("linkedin_buscar.js", f"return await main(this.helpers, {RETRO}, {DIAS_JANELA});"))
+          js("linkedin_buscar.js", f"return await main(this.helpers, {RETRO}, {DIAS_JANELA});", FILTRO))
 s1 = sql("Salvar (LinkedIn)", (720, 0), INSERT, PARAM_JSON)
 liga(f1, c1, 0); liga(c1, s1)
 
 c2 = code("Gupy: termos de busca", (460, 200), js("gupy_termos.js", f"return main({RETRO});"))
 h2 = code("Gupy: buscar", (720, 200), js("gupy_buscar.js", "return await main($input.all(), this.helpers);"))
-c2b = code("Gupy: normalizar", (980, 200), js("gupy_normalizar.js", f"return main($input.all(), {RETRO}, {DIAS_JANELA});"))
+c2b = code("Gupy: normalizar", (980, 200), js("gupy_normalizar.js", f"return main($input.all(), {RETRO}, {DIAS_JANELA});", FILTRO))
 s2 = sql("Salvar (Gupy)", (1240, 200), INSERT, PARAM_JSON)
 liga(f1, c2, 1); liga(c2, h2); liga(h2, c2b); liga(c2b, s2)
 

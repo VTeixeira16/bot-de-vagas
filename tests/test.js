@@ -63,7 +63,7 @@ teste('LinkedIn: busca pública a partir do link, várias páginas, sem duplicar
       <span class="job-search-card__location">${local}</span>
       <time class="job-search-card__listdate" datetime="2026-11-02">1 dia atrás</time>
     </div></li>`;
-  const pagina1 = Array.from({ length: 10 }, (_, i) => cartao(4400000000 + i, i === 3 ? 'Estagiário de TI' : `Tech Lead ${i}`)).join('');
+  const pagina1 = Array.from({ length: 10 }, (_, i) => cartao(4400000000 + i, i === 3 ? 'Estagiário de TI' : i === 5 ? 'Coordenador Contábil' : `Tech Lead ${i}`)).join('');
   const pagina2 = cartao(4400000001, 'Tech Lead 1') + cartao(4499999999, 'Coordenador de Telemetria &amp; IoT');
   const urls = [];
   const helpers = { httpRequest: async ({ url }) => {
@@ -83,7 +83,8 @@ teste('LinkedIn: busca pública a partir do link, várias páginas, sem duplicar
   assert.strictEqual(u.searchParams.get('f_TPR'), 'r86400');
   assert.strictEqual(u.searchParams.get('currentJobId'), null);
   assert.strictEqual(u.searchParams.get('origin'), null);
-  assert.strictEqual(out.length, 10); // 10 da página 1 - estagiário + 1 nova da página 2
+  assert.strictEqual(out.length, 9); // 10 da página 1 - estagiário - fora do filtro_titulo + 1 nova da página 2
+  assert.ok(!out.some(v => v.titulo === 'Coordenador Contábil'), 'a busca aproximada não fura o filtro_titulo');
   const ultima = out.find(v => v.id_externo === '4499999999');
   assert.strictEqual(ultima.titulo, 'Coordenador de Telemetria & IoT');
   assert.strictEqual(ultima.empresa, 'AgroVia');
@@ -100,12 +101,13 @@ teste('LinkedIn: falha ou bloqueio não derruba a coleta', async () => {
   assert.ok(workflowNo('Salvar (LinkedIn)').parameters.query.includes('WHERE r.fonte IS NOT NULL'));
 });
 
-teste('Gupy: normaliza, remove duplicada, antiga e júnior', async () => {
+teste('Gupy: normaliza, remove duplicada, antiga, júnior e fora do filtro_titulo', async () => {
   const hoje = new Date().toISOString();
   const resp1 = { data: [
     { id: 1, name: 'Coordenador de Agtech', careerPageName: 'AgroVia', city: 'Curitiba', state: 'Paraná', workplaceType: 'hybrid', publishedDate: hoje, jobUrl: 'https://agrovia.gupy.io/job/1', description: '<p>Liderar <b>telemetria</b> &amp; IoT</p>' },
     { id: 2, name: 'Analista Júnior de Sistemas', publishedDate: hoje },
     { id: 3, name: 'Gerente de TI', publishedDate: '2020-01-01T00:00:00Z' },
+    { id: 4, name: 'Coordenador Fiscal', publishedDate: hoje },
   ] };
   const resp2 = { data: [{ id: 1, name: 'Coordenador de Agtech', publishedDate: hoje }] };
   const out = await rodar('Gupy: normalizar', [resp1, resp2, { error: 'timeout' }], NORMAL);

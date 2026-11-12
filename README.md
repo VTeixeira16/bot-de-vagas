@@ -135,7 +135,7 @@ Campos que começam com `_` são só comentários.
 | `linkedin_buscas` | Links de buscas feitas no LinkedIn ([veja abaixo](#linkedin)) |
 | `termos_de_busca` | `cargos`: pesquisados na Gupy e nos sites brasileiros. `assuntos`: só na Gupy (trazem vagas de qualquer cargo daquele assunto). `remotive_categoria`: `software-dev`, `data`, `devops`, `product`... |
 | `paginas_de_carreira` | Empresas cujas páginas de vagas o bot acompanha ([veja abaixo](#páginas-de-carreira)) |
-| `filtro_titulo` | Quais títulos da Remotive, dos sites brasileiros e das páginas de carreira vão para o Gemini |
+| `filtro_titulo` | Quais títulos vão para o Gemini, em todas as fontes (a busca do LinkedIn e da Gupy é aproximada e traz muito título fora do pedido) |
 | `descartar_titulos` | Títulos descartados em todas as fontes: `com` (em qualquer lugar do título) e `comecando_com` |
 | `locais_de_interesse` | Só para as páginas de carreira: `palavras` do local e códigos de `paises` (`"BR"`) aceitos |
 | `avaliacao` | Regras da nota ([veja abaixo](#avaliação)) |
